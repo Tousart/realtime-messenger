@@ -9,20 +9,39 @@ import (
 	"syscall"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/joho/godotenv"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
+
+type Config struct {
+	serverAddr    string
+	rabbitMQAddr  string
+	messagesQueue string
+}
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
+	cfg := Config{}
+
+	if err := godotenv.Load("../.env"); err != nil {
+		log.Println("no env params, using os environments")
+		cfg.serverAddr = os.Getenv("SERVER_ADDR")
+		cfg.rabbitMQAddr = os.Getenv("RABBITMQ_ADDR_DOCKER")
+		cfg.messagesQueue = os.Getenv("MESSAGES_QUEUE")
+	} else {
+		cfg.serverAddr = os.Getenv("SERVER_ADDR")
+		cfg.rabbitMQAddr = os.Getenv("RABBITMQ_ADDR_LOCALHOST")
+		cfg.messagesQueue = os.Getenv("MESSAGES_QUEUE")
+	}
+
 	go consumeMessages(ctx)
 
 	r := chi.NewRouter()
-	addr := ":8000"
 
 	// create and run server
-	srv := server.NewServer(addr, r)
+	srv := server.NewServer(cfg.serverAddr, r)
 	srv.CreateAndRunServer(ctx)
 
 	srv.Wg.Wait()
@@ -30,7 +49,7 @@ func main() {
 
 func consumeMessages(ctx context.Context) {
 	// connection
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	conn, err := amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
 	if err != nil {
 		log.Fatal("Ошибка подключения:", err)
 	}

@@ -8,13 +8,18 @@ import (
 	"syscall"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/joho/godotenv"
 	"github.com/tousart/messenger/internal/api"
 	"github.com/tousart/messenger/internal/repository/rabbitmq"
 	"github.com/tousart/messenger/internal/server"
 	"github.com/tousart/messenger/internal/usecase/service"
-
-	"github.com/joho/godotenv"
 )
+
+type Config struct {
+	serverAddr    string
+	rabbitMQAddr  string
+	messagesQueue string
+}
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -22,15 +27,24 @@ func main() {
 
 	// environment variables
 
+	cfg := Config{}
+
 	if err := godotenv.Load("../.env"); err != nil {
-		log.Fatal("failed to load env params")
+		log.Println("no env params, using os environments")
+		cfg.serverAddr = os.Getenv("SERVER_ADDR")
+		cfg.rabbitMQAddr = os.Getenv("RABBITMQ_ADDR_DOCKER")
+		cfg.messagesQueue = os.Getenv("MESSAGES_QUEUE")
+	} else {
+		cfg.serverAddr = os.Getenv("SERVER_ADDR")
+		cfg.rabbitMQAddr = os.Getenv("RABBITMQ_ADDR_LOCALHOST")
+		cfg.messagesQueue = os.Getenv("MESSAGES_QUEUE")
 	}
 
 	// publisher repository
 
-	publisherRepo, err := rabbitmq.NewRabbitMQPublisherRepository(os.Getenv("RABBITMQ_ADDR"), os.Getenv("MESSAGES_QUEUE"))
+	publisherRepo, err := rabbitmq.NewRabbitMQPublisherRepository(cfg.rabbitMQAddr, cfg.messagesQueue)
 	if err != nil {
-		log.Fatal("failed to create publisher repository")
+		log.Fatalf("failed to create publisher repository: %s", err.Error())
 	}
 	defer publisherRepo.Close()
 
@@ -50,7 +64,7 @@ func main() {
 
 	// create and run server
 
-	srv := server.NewServer(os.Getenv("SERVER_ADDR"), r)
+	srv := server.NewServer(cfg.serverAddr, r)
 	srv.CreateAndRunServer(ctx)
 
 	srv.Wg.Wait()

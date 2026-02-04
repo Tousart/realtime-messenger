@@ -1,0 +1,38 @@
+services:
+  messenger:
+    container_name: messenger
+    build:
+      context: ./messenger
+      dockerfile: ./Dockerfile
+    ports:
+     - 8080:8080
+    env_file:
+     - path: ./messenger/.env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy 
+
+  router:
+    container_name: router
+    build:
+      context: ./router
+      dockerfile: ./Dockerfile
+    ports:
+     - 8000:8000
+    env_file:
+     - path: ./router/.env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy 
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 30s
+      retries: 3
