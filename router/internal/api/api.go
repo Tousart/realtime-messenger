@@ -2,8 +2,10 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"router/internal/models"
 	"router/internal/usecase"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -11,11 +13,13 @@ import (
 
 type API struct {
 	consumerService usecase.MessagesConsumerService
+	setService      usecase.ChatNodesSetService
 }
 
-func NewAPI(consumerService usecase.MessagesConsumerService) *API {
+func NewAPI(consumerService usecase.MessagesConsumerService, setService usecase.ChatNodesSetService) *API {
 	return &API{
 		consumerService: consumerService,
+		setService:      setService,
 	}
 }
 
@@ -32,21 +36,34 @@ func (ap *API) ConsumeMessages(ctx context.Context) error {
 
 func (ap *API) consumeMessagesFromChannel(ctx context.Context, msgsChan <-chan amqp.Delivery) {
 	errChan := make(chan error)
+	defer close(errChan)
 
 	for {
 		select {
 		case msg := <-msgsChan:
-			nodes, err := ap.consumerService.GetNodes()
+			var message models.Message
+			msgBytes := msg.Body
+			if err := json.Unmarshal(msgBytes, &message); err != nil {
+				log.Printf("api: consume consumeMessagesFromChannel error: %s\n", err.Error())
+				continue
+			}
+
+			nodes, err := ap.setService.GetChatNodes(context.Background(), message.ChatID)
+			if err != nil {
+				log.Printf("api: consume consumeMessagesFromChannel error: %s\n", err.Error())
+				continue
+			}
 
 			for _, nodeAddress := range nodes {
-				err := ap.consumerService.SendMessageToNode(nodeAddress)
+				// err := ap.consumerService.SendMessageToNode(nodeAddress)
+				log.Printf("node address: %s, and message text: %s\n", nodeAddress, message.Text)
 			}
 
 		case err := <-errChan:
 			log.Printf("api: consumeMessagesFromChannel error: %s", err)
-			break
+			return
 		case <-ctx.Done():
-			break
+			return
 		}
 	}
 }
