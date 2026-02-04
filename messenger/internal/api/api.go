@@ -38,15 +38,19 @@ type API struct {
 
 	// publisher service to balance messages
 	publisherService usecase.MessagesPublisherService
+
+	// set to register nodes on chats
+	setService usecase.ChatNodesSetService
 }
 
-func NewAPI(publisherService usecase.MessagesPublisherService) *API {
+func NewAPI(publisherService usecase.MessagesPublisherService, setService usecase.ChatNodesSetService) *API {
 	return &API{
 		UserConnections:  make(map[int][]*websocket.Conn),
 		ChatUsers:        make(map[int]map[int]int),
 		UserChat:         make(map[int]int),
 		mu:               &sync.RWMutex{},
 		publisherService: publisherService,
+		setService:       setService,
 	}
 }
 
@@ -154,6 +158,7 @@ func (ap *API) connectUser(userID int, conn *websocket.Conn) {
 	for _, chatID := range chats {
 		if _, ok := ap.ChatUsers[chatID]; !ok {
 			ap.ChatUsers[chatID] = make(map[int]int)
+			ap.setService.AddNodeToChat(context.Background(), chatID)
 		}
 		ap.ChatUsers[chatID][userID]++
 	}
@@ -185,9 +190,9 @@ func (ap *API) disconnectUser(userID int, conn *websocket.Conn) {
 	for _, chatID := range chats {
 		if ap.ChatUsers[chatID][userID] == 1 {
 			delete(ap.ChatUsers[chatID], userID)
-
 			if len(ap.ChatUsers[chatID]) == 0 {
 				delete(ap.ChatUsers, chatID)
+				ap.setService.RemoveNodeFromChat(context.Background(), chatID)
 			}
 		} else {
 			ap.ChatUsers[chatID][userID]--
