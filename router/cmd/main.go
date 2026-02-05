@@ -50,11 +50,11 @@ func main() {
 		log.Fatalf("failed to create consumer repository: %s", err.Error())
 	}
 
-	consumerService := service.NewRabbitMQConsumerService(consumerRepo)
+	consumerService := service.NewMessagesConsumerService(consumerRepo)
 
-	setRepo := redis.NewRedisNodesSetRepository(cfg.redisAddr)
+	setRepo := redis.NewRedisNodesSenderRepository(cfg.redisAddr)
 
-	setService := service.NewRedisChatNodesSetService(setRepo)
+	setService := service.NewNodesSenderService(setRepo)
 
 	srvApi := api.NewAPI(consumerService, setService)
 	srvApi.ConsumeMessages(ctx)

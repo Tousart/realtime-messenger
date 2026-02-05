@@ -2,7 +2,7 @@ package usecase
 
 import "context"
 
-type ChatNodesSetService interface {
+type NodesReceiverService interface {
 	AddNodeToChat(ctx context.Context, chatID int) error
 	RemoveNodeFromChat(ctx context.Context, chatID int) error
 }

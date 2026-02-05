@@ -38,13 +38,13 @@ func main() {
 		cfg.rabbitMQAddr = os.Getenv("RABBITMQ_ADDR_DOCKER")
 		cfg.messagesQueue = os.Getenv("MESSAGES_QUEUE")
 		cfg.redisAddr = os.Getenv("REDIS_ADDR_DOCKER")
-		cfg.nodeAddr = os.Getenv("NODE_ADDR")
+		cfg.nodeAddr = os.Getenv("NODE_ADDR_DOCKER")
 	} else {
 		cfg.serverAddr = os.Getenv("SERVER_ADDR")
 		cfg.rabbitMQAddr = os.Getenv("RABBITMQ_ADDR_LOCALHOST")
 		cfg.messagesQueue = os.Getenv("MESSAGES_QUEUE")
 		cfg.redisAddr = os.Getenv("REDIS_ADDR_LOCALHOST")
-		cfg.nodeAddr = os.Getenv("NODE_ADDR")
+		cfg.nodeAddr = os.Getenv("NODE_ADDR_LOCALHOST")
 	}
 
 	// publisher repository
@@ -57,15 +57,15 @@ func main() {
 
 	// publisher service
 
-	publisherService := service.NewRabbitMQPublisherService(publisherRepo)
+	publisherService := service.NewMessagesPublisherService(publisherRepo)
 
 	// set chat-nodes repository
 
-	setRepo := redis.NewRedisNodesSetRepository(cfg.redisAddr, cfg.nodeAddr)
+	receiverRepo := redis.NewRedisNodesReceiverRepository(cfg.redisAddr, cfg.nodeAddr)
 
 	// set chat-nodes repository
 
-	setService := service.NewRedisChatNodesSetService(setRepo)
+	receiverService := service.NewNodesReceiverService(receiverRepo)
 
 	// api methods router
 
@@ -73,7 +73,7 @@ func main() {
 
 	// create server api
 
-	srvApi := api.NewAPI(publisherService, setService)
+	srvApi := api.NewAPI(publisherService, receiverService)
 	srvApi.WithHandlers(r)
 	srvApi.WithMethods()
 

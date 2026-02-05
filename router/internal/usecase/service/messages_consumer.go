@@ -8,17 +8,17 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-type RabbitMQConsumerService struct {
+type MessagesConsumerService struct {
 	consumerRepo repository.MessagesConsumerRepository
 }
 
-func NewRabbitMQConsumerService(repo repository.MessagesConsumerRepository) *RabbitMQConsumerService {
-	return &RabbitMQConsumerService{
+func NewMessagesConsumerService(repo repository.MessagesConsumerRepository) *MessagesConsumerService {
+	return &MessagesConsumerService{
 		consumerRepo: repo,
 	}
 }
 
-func (c *RabbitMQConsumerService) ConsumeMessages(ctx context.Context) (<-chan amqp.Delivery, error) {
+func (c *MessagesConsumerService) ConsumeMessages(ctx context.Context) (<-chan amqp.Delivery, error) {
 	messagesChannel, err := c.consumerRepo.ConsumeMessages(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("service: ConsumeMessages: %s", err.Error())

@@ -18,28 +18,11 @@ func (ap *API) SendMessage(req models.WSRequest) {
 
 	message.UserID = req.UserID
 
-	log.Printf("message text: %s\n", message.Text)
-
 	if err := ap.publisherService.PublishMessage(context.TODO(), message); err != nil {
 		log.Printf("SendMessage error: %s\n", err.Error())
 		return
 	}
-
-	// ap.send(&message)
 }
-
-// func (ap *API) send(msg *models.Message) {
-// 	ap.mu.RLock()
-// 	defer ap.mu.RUnlock()
-
-// 	for userID := range ap.ChatUsers[msg.ChatID] {
-// 		for _, conn := range ap.UserConnections[userID] {
-// 			if err := conn.WriteMessage(1, []byte(msg.Text)); err != nil {
-// 				log.Printf("send error: %s\n", err.Error())
-// 			}
-// 		}
-// 	}
-// }
 
 func (ap *API) JoinToChat(req models.WSRequest) {
 	var chat models.Chat
