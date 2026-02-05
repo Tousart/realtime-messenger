@@ -13,13 +13,13 @@ import (
 
 type API struct {
 	consumerService usecase.MessagesConsumerService
-	setService      usecase.ChatNodesSetService
+	senderService   usecase.NodesSenderService
 }
 
-func NewAPI(consumerService usecase.MessagesConsumerService, setService usecase.ChatNodesSetService) *API {
+func NewAPI(consumerService usecase.MessagesConsumerService, senderService usecase.NodesSenderService) *API {
 	return &API{
 		consumerService: consumerService,
-		setService:      setService,
+		senderService:   senderService,
 	}
 }
 
@@ -44,19 +44,22 @@ func (ap *API) consumeMessagesFromChannel(ctx context.Context, msgsChan <-chan a
 			var message models.Message
 			msgBytes := msg.Body
 			if err := json.Unmarshal(msgBytes, &message); err != nil {
-				log.Printf("api: consume consumeMessagesFromChannel error: %s\n", err.Error())
+				log.Printf("api: consumeMessagesFromChannel error: %s\n", err.Error())
 				continue
 			}
 
-			nodes, err := ap.setService.GetChatNodes(context.Background(), message.ChatID)
+			nodes, err := ap.senderService.GetChatNodes(context.Background(), message.ChatID)
 			if err != nil {
-				log.Printf("api: consume consumeMessagesFromChannel error: %s\n", err.Error())
+				log.Printf("api: consumeMessagesFromChannel error: %s\n", err.Error())
 				continue
 			}
 
-			for _, nodeAddress := range nodes {
-				// err := ap.consumerService.SendMessageToNode(nodeAddress)
-				log.Printf("node address: %s, and message text: %s\n", nodeAddress, message.Text)
+			for _, nodeAddr := range nodes {
+				err := ap.senderService.SendMessageToNode(context.Background(), nodeAddr, &message)
+				if err != nil {
+					log.Printf("api: consumeMessagesFromChannel error: %s\n", err.Error())
+				}
+				// log.Printf("node address: %s, and message text: %s\n", nodeAddress, message.Text)
 			}
 
 		case err := <-errChan:

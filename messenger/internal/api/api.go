@@ -40,17 +40,17 @@ type API struct {
 	publisherService usecase.MessagesPublisherService
 
 	// set to register nodes on chats
-	setService usecase.ChatNodesSetService
+	receiverService usecase.NodesReceiverService
 }
 
-func NewAPI(publisherService usecase.MessagesPublisherService, setService usecase.ChatNodesSetService) *API {
+func NewAPI(publisherService usecase.MessagesPublisherService, receiverService usecase.NodesReceiverService) *API {
 	return &API{
 		UserConnections:  make(map[int][]*websocket.Conn),
 		ChatUsers:        make(map[int]map[int]int),
 		UserChat:         make(map[int]int),
 		mu:               &sync.RWMutex{},
 		publisherService: publisherService,
-		setService:       setService,
+		receiverService:  receiverService,
 	}
 }
 
@@ -58,6 +58,7 @@ func (ap *API) WithHandlers(r *chi.Mux) {
 	r.Route("/", func(r chi.Router) {
 		r.Get("/", ap.getHomePageHandler)
 		r.Get("/messenger", ap.messengerWebSocketConnectionHandler)
+		r.Post("/messages", ap.receiveMessageHandler)
 	})
 }
 
@@ -158,7 +159,7 @@ func (ap *API) connectUser(userID int, conn *websocket.Conn) {
 	for _, chatID := range chats {
 		if _, ok := ap.ChatUsers[chatID]; !ok {
 			ap.ChatUsers[chatID] = make(map[int]int)
-			ap.setService.AddNodeToChat(context.Background(), chatID)
+			ap.receiverService.AddNodeToChat(context.Background(), chatID)
 		}
 		ap.ChatUsers[chatID][userID]++
 	}
@@ -192,7 +193,7 @@ func (ap *API) disconnectUser(userID int, conn *websocket.Conn) {
 			delete(ap.ChatUsers[chatID], userID)
 			if len(ap.ChatUsers[chatID]) == 0 {
 				delete(ap.ChatUsers, chatID)
-				ap.setService.RemoveNodeFromChat(context.Background(), chatID)
+				ap.receiverService.RemoveNodeFromChat(context.Background(), chatID)
 			}
 		} else {
 			ap.ChatUsers[chatID][userID]--

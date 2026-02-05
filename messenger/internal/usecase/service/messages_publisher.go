@@ -9,17 +9,17 @@ import (
 	"github.com/tousart/messenger/internal/repository"
 )
 
-type RabbitMQPublisherService struct {
+type MessagesPublisherService struct {
 	publisherRepo repository.MessagesPublisherRepository
 }
 
-func NewRabbitMQPublisherService(repo repository.MessagesPublisherRepository) *RabbitMQPublisherService {
-	return &RabbitMQPublisherService{
+func NewMessagesPublisherService(repo repository.MessagesPublisherRepository) *MessagesPublisherService {
+	return &MessagesPublisherService{
 		publisherRepo: repo,
 	}
 }
 
-func (p *RabbitMQPublisherService) PublishMessage(ctx context.Context, message models.Message) error {
+func (p *MessagesPublisherService) PublishMessage(ctx context.Context, message models.Message) error {
 	messageBytes, err := json.Marshal(message)
 
 	if err != nil {

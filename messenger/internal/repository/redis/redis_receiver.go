@@ -7,22 +7,22 @@ import (
 	rdb "github.com/redis/go-redis/v9"
 )
 
-type RedisNodesSetRepository struct {
+type RedisNodesReceiverRepository struct {
 	client   *rdb.Client
 	nodeAddr string
 }
 
-func NewRedisNodesSetRepository(redisAddr, nodeAddr string) *RedisNodesSetRepository {
+func NewRedisNodesReceiverRepository(redisAddr, nodeAddr string) *RedisNodesReceiverRepository {
 	client := rdb.NewClient(&rdb.Options{
 		Addr: redisAddr,
 	})
-	return &RedisNodesSetRepository{
+	return &RedisNodesReceiverRepository{
 		client:   client,
 		nodeAddr: nodeAddr,
 	}
 }
 
-func (r *RedisNodesSetRepository) AddNodeToChat(ctx context.Context, chatID string) error {
+func (r *RedisNodesReceiverRepository) AddNodeToChat(ctx context.Context, chatID string) error {
 	err := r.client.SAdd(ctx, chatID, r.nodeAddr).Err()
 	if err != nil {
 		return fmt.Errorf("redis: AddNodeToChat error: %s", err.Error())
@@ -30,7 +30,7 @@ func (r *RedisNodesSetRepository) AddNodeToChat(ctx context.Context, chatID stri
 	return nil
 }
 
-func (r *RedisNodesSetRepository) RemoveNodeFromChat(ctx context.Context, chatID string) error {
+func (r *RedisNodesReceiverRepository) RemoveNodeFromChat(ctx context.Context, chatID string) error {
 	err := r.client.SRem(ctx, chatID, r.nodeAddr).Err()
 	if err != nil {
 		return fmt.Errorf("redis: RemoveNodeFromChat error: %s", err.Error())
