@@ -59,7 +59,6 @@ func (ap *API) consumeMessagesFromChannel(ctx context.Context, msgsChan <-chan a
 				if err != nil {
 					log.Printf("api: consumeMessagesFromChannel error: %s\n", err.Error())
 				}
-				// log.Printf("node address: %s, and message text: %s\n", nodeAddress, message.Text)
 			}
 
 		case err := <-errChan:

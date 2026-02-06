@@ -8,7 +8,7 @@ import (
 	"syscall"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/joho/godotenv"
+	"github.com/tousart/messenger/config"
 	"github.com/tousart/messenger/internal/api"
 	"github.com/tousart/messenger/internal/repository/rabbitmq"
 	"github.com/tousart/messenger/internal/repository/redis"
@@ -28,28 +28,13 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	// environment variables
+	// config
 
-	cfg := Config{}
-
-	if err := godotenv.Load("../.env"); err != nil {
-		log.Println("no env params, using os environments")
-		cfg.serverAddr = os.Getenv("SERVER_ADDR")
-		cfg.rabbitMQAddr = os.Getenv("RABBITMQ_ADDR_DOCKER")
-		cfg.messagesQueue = os.Getenv("MESSAGES_QUEUE")
-		cfg.redisAddr = os.Getenv("REDIS_ADDR_DOCKER")
-		cfg.nodeAddr = os.Getenv("NODE_ADDR_DOCKER")
-	} else {
-		cfg.serverAddr = os.Getenv("SERVER_ADDR")
-		cfg.rabbitMQAddr = os.Getenv("RABBITMQ_ADDR_LOCALHOST")
-		cfg.messagesQueue = os.Getenv("MESSAGES_QUEUE")
-		cfg.redisAddr = os.Getenv("REDIS_ADDR_LOCALHOST")
-		cfg.nodeAddr = os.Getenv("NODE_ADDR_LOCALHOST")
-	}
+	cfg := config.LoadConfig()
 
 	// publisher repository
 
-	publisherRepo, err := rabbitmq.NewRabbitMQPublisherRepository(cfg.rabbitMQAddr, cfg.messagesQueue)
+	publisherRepo, err := rabbitmq.NewRabbitMQPublisherRepository(cfg.RabbitMQ.Addr, cfg.RabbitMQ.MessagesQueue)
 	if err != nil {
 		log.Fatalf("failed to create publisher repository: %s", err.Error())
 	}
@@ -61,7 +46,7 @@ func main() {
 
 	// set chat-nodes repository
 
-	receiverRepo := redis.NewRedisNodesReceiverRepository(cfg.redisAddr, cfg.nodeAddr)
+	receiverRepo := redis.NewRedisNodesReceiverRepository(cfg.Redis.Addr, cfg.Server.NodeAddr)
 
 	// set chat-nodes repository
 
@@ -79,7 +64,7 @@ func main() {
 
 	// create and run server
 
-	srv := server.NewServer(cfg.serverAddr, r)
+	srv := server.NewServer(cfg.Server.Addr, r)
 	srv.CreateAndRunServer(ctx)
 
 	srv.Wg.Wait()
