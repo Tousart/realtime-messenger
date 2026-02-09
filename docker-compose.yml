@@ -16,23 +16,6 @@ services:
     networks:
      - realtime
 
-  router:
-    container_name: router
-    build:
-      context: ./router
-      dockerfile: ./Dockerfile
-    ports:
-     - 8000:8000
-    env_file:
-     - path: ./router/.env
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy 
-    networks:
-     - realtime
-
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     container_name: rabbitmq

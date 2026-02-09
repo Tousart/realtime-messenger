@@ -15,10 +15,8 @@ func (ap *API) SendMessage(req models.WSRequest) {
 		log.Printf("SendMessage error: %s\n", err.Error())
 		return
 	}
-
 	message.UserID = req.UserID
-
-	if err := ap.publisherService.PublishMessage(context.TODO(), message); err != nil {
+	if err := ap.msgsHandlerService.PublishMessageToQueues(context.TODO(), message); err != nil {
 		log.Printf("SendMessage error: %s\n", err.Error())
 		return
 	}
@@ -30,7 +28,6 @@ func (ap *API) JoinToChat(req models.WSRequest) {
 		log.Printf("JoinToChat error: %s\n", err.Error())
 		return
 	}
-
 	userID := req.UserID
 
 	ap.mu.RLock()

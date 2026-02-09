@@ -1,6 +1,10 @@
 package models
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	amqp "github.com/rabbitmq/amqp091-go"
+)
 
 type WebSocketMessageRequest struct {
 	Method string          `json:"method"`
@@ -11,6 +15,8 @@ type WSRequest struct {
 	UserID int             `json:"user_id"`
 	Data   json.RawMessage `json:"data"`
 }
+
+type MessagesQueue <-chan amqp.Delivery
 
 type Message struct {
 	UserID int    `json:"user_id"`
