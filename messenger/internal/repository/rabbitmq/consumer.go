@@ -1,9 +1,9 @@
 package rabbitmq
 
 import (
-	"github.com/tousart/messenger/internal/models"
+	"github.com/tousart/messenger/internal/domain"
 )
 
-func (r *RabbitMQMessagesHandlerRepository) MessagesQueue() (models.MessagesQueue, error) {
-	return models.MessagesQueue(r.messagesQueue), nil
+func (r *RabbitMQMessagesHandlerRepository) MessagesQueue() (domain.MessagesQueue, error) {
+	return domain.MessagesQueue(r.messagesQueue), nil
 }

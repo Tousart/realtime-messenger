@@ -10,15 +10,19 @@ const (
 	DEFAULT_RABBITMQ_ADDR  = "amqp://guest:guest@localhost:5672/"
 	DEFAULT_MESSAGES_QUEUE = "messages"
 
+	// postgres
+	DEFAULT_POSTGRESQL_ADDR = "postgres://user:password@localhost:5432/messenger_db?sslmode=disable"
+
 	// server
 	DEFAULT_SERVER_ADDR = ":8080"
 	DEFAULT_NODE_ADDR   = "localhost:8080"
 )
 
 type Config struct {
-	Redis    RedisCfg
-	RabbitMQ RabbitMQCfg
-	Server   ServerCfg
+	Redis      RedisCfg
+	RabbitMQ   RabbitMQCfg
+	Server     ServerCfg
+	PostgreSQL PostgreSQLCfg
 }
 
 type RedisCfg struct {
@@ -35,6 +39,10 @@ type ServerCfg struct {
 	NodeAddr string
 }
 
+type PostgreSQLCfg struct {
+	Addr string
+}
+
 func LoadConfig() *Config {
 	return &Config{
 		Redis: RedisCfg{
@@ -47,6 +55,9 @@ func LoadConfig() *Config {
 		Server: ServerCfg{
 			Addr:     getEnv("SERVER_ADDR", DEFAULT_SERVER_ADDR),
 			NodeAddr: getEnv("NODE_ADDR_DOCKER", DEFAULT_NODE_ADDR),
+		},
+		PostgreSQL: PostgreSQLCfg{
+			Addr: getEnv("POSTGRESQL_ADDR", DEFAULT_POSTGRESQL_ADDR),
 		},
 	}
 }

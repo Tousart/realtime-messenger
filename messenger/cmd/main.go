@@ -10,10 +10,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/tousart/messenger/config"
 	"github.com/tousart/messenger/internal/api"
+	"github.com/tousart/messenger/internal/repository/postgres"
 	"github.com/tousart/messenger/internal/repository/rabbitmq"
 	"github.com/tousart/messenger/internal/repository/redis"
 	"github.com/tousart/messenger/internal/server"
 	"github.com/tousart/messenger/internal/usecase/service"
+	"github.com/tousart/messenger/pkg"
 )
 
 func main() {
@@ -26,7 +28,7 @@ func main() {
 	// messages handler repository
 	msgsHandlerRepo, err := rabbitmq.NewRabbitMQMessagesHandlerRepository(cfg.RabbitMQ.Addr, cfg.RabbitMQ.MessagesQueue)
 	if err != nil {
-		log.Fatalf("failed to create publisher repository: %s", err.Error())
+		log.Fatalf("failed to create publisher repository: %v", err)
 	}
 	defer msgsHandlerRepo.Close()
 
@@ -36,11 +38,24 @@ func main() {
 	// messages handler service
 	msgsHandlerService := service.NewMessagesHandlerService(msgsHandlerRepo, queuesRepo)
 
+	// users repository
+	usersRepo, err := postgres.NewPSQLUsersRepository(cfg.PostgreSQL.Addr)
+	if err != nil {
+		log.Fatalf("failed to create publisher repository: %v", err)
+	}
+
+	// password hasher
+	// to hashing users password
+	pswrdHasher := pkg.NewBCryptPasswordHasher()
+
+	// users service
+	usersService := service.NewUsersService(usersRepo, pswrdHasher)
+
 	// api methods router
 	r := chi.NewRouter()
 
 	// create server api
-	srvApi := api.NewAPI(msgsHandlerService)
+	srvApi := api.NewAPI(msgsHandlerService, usersService)
 	srvApi.WithHandlers(r)
 	srvApi.WithMethods()
 

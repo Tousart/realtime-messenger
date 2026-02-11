@@ -19,6 +19,9 @@ func TestLoadConfigDefault(t *testing.T) {
 			Addr:     DEFAULT_SERVER_ADDR,
 			NodeAddr: DEFAULT_NODE_ADDR,
 		},
+		PostgreSQL: PostgreSQLCfg{
+			Addr: DEFAULT_POSTGRESQL_ADDR,
+		},
 	}
 
 	actual := LoadConfig()

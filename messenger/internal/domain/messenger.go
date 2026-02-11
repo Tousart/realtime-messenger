@@ -1,4 +1,4 @@
-package models
+package domain
 
 import (
 	"encoding/json"
@@ -22,10 +22,6 @@ type Message struct {
 	UserID int    `json:"user_id"`
 	ChatID int    `json:"chat_id"`
 	Text   string `json:"text"`
-}
-
-type User struct {
-	UserID int `json:"user_id"`
 }
 
 type Chat struct {

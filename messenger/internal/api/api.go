@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
-	"github.com/tousart/messenger/internal/models"
+	"github.com/tousart/messenger/internal/domain"
 	"github.com/tousart/messenger/internal/usecase"
 )
 
@@ -36,17 +36,21 @@ type API struct {
 
 	// publisher service to balance messages
 	msgsHandlerService usecase.MessagesHandlerService
+
+	// processing users data
+	usersService usecase.UsersService
 }
 
-type MessengerMethod func(req models.WSRequest)
+type MessengerMethod func(req domain.WSRequest)
 
-func NewAPI(msgsHandlerService usecase.MessagesHandlerService) *API {
+func NewAPI(msgsHandlerService usecase.MessagesHandlerService, usersService usecase.UsersService) *API {
 	return &API{
 		UserConnections:    make(map[int][]*websocket.Conn),
 		ChatUsers:          make(map[int]map[int]int),
 		UserChat:           make(map[int]int),
 		mu:                 &sync.RWMutex{},
 		msgsHandlerService: msgsHandlerService,
+		usersService:       usersService,
 	}
 }
 
@@ -56,6 +60,7 @@ func (ap *API) WithHandlers(r *chi.Mux) {
 		r.Get("/", ap.getHomePageHandler)
 
 		// messenger
+		// method to upgrade connection to websocket
 		r.Get("/messenger", ap.messengerWebSocketConnectionHandler)
 
 		// authorization

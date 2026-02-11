@@ -9,7 +9,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
-	"github.com/tousart/messenger/internal/models"
+	"github.com/tousart/messenger/internal/domain"
 )
 
 // Handle requests that becomes
@@ -29,7 +29,7 @@ func (ap *API) wsRequestHandler(ctx context.Context, conn *websocket.Conn, userI
 
 		log.Printf("ws request: %s\n", string(wsRequest))
 
-		var wsReq models.WebSocketMessageRequest
+		var wsReq domain.WebSocketMessageRequest
 		if err := json.Unmarshal(wsRequest, &wsReq); err != nil {
 			select {
 			case <-ctx.Done():
@@ -39,7 +39,7 @@ func (ap *API) wsRequestHandler(ctx context.Context, conn *websocket.Conn, userI
 		}
 
 		if method, ok := ap.messengerMethods[wsReq.Method]; ok {
-			req := models.WSRequest{
+			req := domain.WSRequest{
 				UserID: userID,
 				Data:   wsReq.Data,
 			}
@@ -54,7 +54,7 @@ func (ap *API) wsRequestHandler(ctx context.Context, conn *websocket.Conn, userI
 // Messages get from channel that exists
 // only while websocket connection alive.
 
-func (ap *API) send(msg *models.Message) {
+func (ap *API) send(msg *domain.Message) {
 	ap.mu.RLock()
 	defer ap.mu.RUnlock()
 
@@ -84,7 +84,7 @@ func (ap *API) consumeMessages(ctx context.Context, errChan chan<- error) {
 				return
 			}
 			msgBytes := msg.Body
-			var message models.Message
+			var message domain.Message
 			if err := json.Unmarshal(msgBytes, &message); err != nil {
 				log.Printf("api: consumeMessages error: %s\n", err.Error())
 				continue
