@@ -3,12 +3,12 @@ package usecase
 import (
 	"context"
 
-	"github.com/tousart/messenger/internal/models"
+	"github.com/tousart/messenger/internal/domain"
 )
 
 type MessagesHandlerService interface {
-	PublishMessageToQueues(ctx context.Context, message models.Message) error
-	MessagesQueue() (models.MessagesQueue, error)
+	PublishMessageToQueues(ctx context.Context, message domain.Message) error
+	MessagesQueue() (domain.MessagesQueue, error)
 	AddQueueToChat(ctx context.Context, chatID int) error
 	RemoveQueueFromChat(ctx context.Context, chatID int) error
 }

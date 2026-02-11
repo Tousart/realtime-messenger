@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/tousart/messenger/internal/models"
+	"github.com/tousart/messenger/internal/domain"
 )
 
-func (ap *API) SendMessage(req models.WSRequest) {
-	var message models.Message
+func (ap *API) SendMessage(req domain.WSRequest) {
+	var message domain.Message
 	if err := json.Unmarshal(req.Data, &message); err != nil {
 		log.Printf("SendMessage error: %s\n", err.Error())
 		return
@@ -22,8 +22,8 @@ func (ap *API) SendMessage(req models.WSRequest) {
 	}
 }
 
-func (ap *API) JoinToChat(req models.WSRequest) {
-	var chat models.Chat
+func (ap *API) JoinToChat(req domain.WSRequest) {
+	var chat domain.Chat
 	if err := json.Unmarshal(req.Data, &chat); err != nil {
 		log.Printf("JoinToChat error: %s\n", err.Error())
 		return

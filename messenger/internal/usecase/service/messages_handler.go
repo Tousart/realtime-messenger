@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tousart/messenger/internal/models"
+	"github.com/tousart/messenger/internal/domain"
 	"github.com/tousart/messenger/internal/repository"
 )
 
@@ -20,7 +20,7 @@ func NewMessagesHandlerService(msgsHandlerRepo repository.MessagesHandlerReposit
 	}
 }
 
-func (s *MessagesHandlerService) PublishMessageToQueues(ctx context.Context, message models.Message) error {
+func (s *MessagesHandlerService) PublishMessageToQueues(ctx context.Context, message domain.Message) error {
 	queues, err := s.queuesRepo.Queues(ctx, message.ChatID)
 	if err != nil {
 		return fmt.Errorf("service: PublishMessageToQueues error: %s", err.Error())
@@ -31,7 +31,7 @@ func (s *MessagesHandlerService) PublishMessageToQueues(ctx context.Context, mes
 	return nil
 }
 
-func (s *MessagesHandlerService) MessagesQueue() (models.MessagesQueue, error) {
+func (s *MessagesHandlerService) MessagesQueue() (domain.MessagesQueue, error) {
 	messagesChannel, err := s.msgsHandlerRepo.MessagesQueue()
 	if err != nil {
 		return nil, fmt.Errorf("service: MessagesQueue: %s", err.Error())

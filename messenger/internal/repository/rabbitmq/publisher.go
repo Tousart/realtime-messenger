@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/tousart/messenger/internal/models"
+	"github.com/tousart/messenger/internal/domain"
 )
 
 func (r *RabbitMQMessagesHandlerRepository) isDeclared(queueName string) bool {
@@ -51,7 +51,7 @@ func (r *RabbitMQMessagesHandlerRepository) publishMessage(ctx context.Context, 
 	return nil
 }
 
-func (r *RabbitMQMessagesHandlerRepository) PublishMessageToQueues(ctx context.Context, queues []string, message models.Message) error {
+func (r *RabbitMQMessagesHandlerRepository) PublishMessageToQueues(ctx context.Context, queues []string, message domain.Message) error {
 	messageBytes, err := json.Marshal(message)
 	if err != nil {
 		return fmt.Errorf("rabbitmq: PublishMessageToQueues error: %s", err.Error())
