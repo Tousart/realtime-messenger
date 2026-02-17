@@ -7,6 +7,6 @@ import (
 )
 
 type MessagesHandlerRepository interface {
-	PublishMessageToQueues(ctx context.Context, queues []string, message domain.Message) error
+	PublishMessageToQueues(ctx context.Context, queues []string, message *domain.Message) error
 	MessagesQueue() (domain.MessagesQueue, error)
 }

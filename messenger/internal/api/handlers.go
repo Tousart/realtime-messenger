@@ -4,42 +4,46 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/tousart/messenger/internal/domain"
+	"github.com/tousart/messenger/internal/dto"
 )
 
 func (ap *API) registerHandler(w http.ResponseWriter, r *http.Request) {
-	var req domain.RegisterRequest
+	var req dto.RegisterUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 	defer r.Body.Close()
 
-	if req.UserName == "" || req.Password == "" {
-		http.Error(w, "username and password are required", http.StatusBadRequest)
+	response, err := ap.usersService.RegisterUser(r.Context(), req)
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	if err := ap.usersService.RegisterUser(r.Context(), &req); err != nil {
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 }
 
 func (ap *API) loginHandler(w http.ResponseWriter, r *http.Request) {
-	var req domain.LoginRequest
+	var req dto.LoginUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 	defer r.Body.Close()
 
-	if req.UserName == "" || req.Password == "" {
-		http.Error(w, "username and password are required", http.StatusBadRequest)
+	response, err := ap.usersService.LoginUser(r.Context(), req)
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	if err := ap.usersService.LoginUser(r.Context(), &req); err != nil {
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

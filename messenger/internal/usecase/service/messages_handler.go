@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/tousart/messenger/internal/domain"
+	"github.com/tousart/messenger/internal/dto"
 	"github.com/tousart/messenger/internal/repository"
 )
 
@@ -20,11 +21,26 @@ func NewMessagesHandlerService(msgsHandlerRepo repository.MessagesHandlerReposit
 	}
 }
 
-func (s *MessagesHandlerService) PublishMessageToQueues(ctx context.Context, message domain.Message) error {
-	queues, err := s.queuesRepo.Queues(ctx, message.ChatID)
+func (s *MessagesHandlerService) PublishMessageToQueues(ctx context.Context, input *dto.SendMessageWSRequest) error {
+	message, err := domain.NewMessage(
+		domain.WithMessageUserID(input.UserID),
+		domain.WithMessageChatID(input.ChatID),
+		domain.WithMessageText(input.Text),
+	)
 	if err != nil {
 		return fmt.Errorf("service: PublishMessageToQueues error: %s", err.Error())
 	}
+
+	chat, err := domain.NewChat(domain.WithChatChatID(input.ChatID))
+	if err != nil {
+		return fmt.Errorf("service: PublishMessageToQueues error: %s", err.Error())
+	}
+
+	queues, err := s.queuesRepo.Queues(ctx, chat)
+	if err != nil {
+		return fmt.Errorf("service: PublishMessageToQueues error: %s", err.Error())
+	}
+
 	if err := s.msgsHandlerRepo.PublishMessageToQueues(ctx, queues, message); err != nil {
 		return fmt.Errorf("service: PublishMessageToQueues error: %s", err.Error())
 	}
@@ -39,17 +55,25 @@ func (s *MessagesHandlerService) MessagesQueue() (domain.MessagesQueue, error) {
 	return messagesChannel, nil
 }
 
-func (s *MessagesHandlerService) AddQueueToChat(ctx context.Context, chatID int) error {
-	err := s.queuesRepo.AddQueueToChat(ctx, chatID)
+func (s *MessagesHandlerService) AddQueueToChat(ctx context.Context, input dto.ChatWSRequest) error {
+	chat, err := domain.NewChat(domain.WithChatChatID(input.ChatID))
 	if err != nil {
+		return fmt.Errorf("service: PublishMessageToQueues error: %s", err.Error())
+	}
+
+	if err = s.queuesRepo.AddQueueToChat(ctx, chat); err != nil {
 		return fmt.Errorf("service: AddQueueToChat error: %s", err.Error())
 	}
 	return nil
 }
 
-func (s *MessagesHandlerService) RemoveQueueFromChat(ctx context.Context, chatID int) error {
-	err := s.queuesRepo.RemoveQueueFromChat(ctx, chatID)
+func (s *MessagesHandlerService) RemoveQueueFromChat(ctx context.Context, input dto.ChatWSRequest) error {
+	chat, err := domain.NewChat(domain.WithChatChatID(input.ChatID))
 	if err != nil {
+		return fmt.Errorf("service: PublishMessageToQueues error: %s", err.Error())
+	}
+
+	if err = s.queuesRepo.RemoveQueueFromChat(ctx, chat); err != nil {
 		return fmt.Errorf("service: RemoveQueueFromChat error: %s", err.Error())
 	}
 	return nil

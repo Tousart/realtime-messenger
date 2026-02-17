@@ -51,8 +51,8 @@ func (r *RabbitMQMessagesHandlerRepository) publishMessage(ctx context.Context, 
 	return nil
 }
 
-func (r *RabbitMQMessagesHandlerRepository) PublishMessageToQueues(ctx context.Context, queues []string, message domain.Message) error {
-	messageBytes, err := json.Marshal(message)
+func (r *RabbitMQMessagesHandlerRepository) PublishMessageToQueues(ctx context.Context, queues []string, message *domain.Message) error {
+	messageBytes, err := json.Marshal(*message)
 	if err != nil {
 		return fmt.Errorf("rabbitmq: PublishMessageToQueues error: %s", err.Error())
 	}
