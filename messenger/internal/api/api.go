@@ -1,22 +1,12 @@
 package api
 
 import (
-	"net/http"
 	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
-	"github.com/tousart/messenger/internal/domain"
 	"github.com/tousart/messenger/internal/usecase"
 )
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return r.Header.Get("Origin") == "http://localhost:8080"
-	},
-}
 
 type API struct {
 	// methods that are processed by websocket connection
@@ -40,8 +30,6 @@ type API struct {
 	// processing users data
 	usersService usecase.UsersService
 }
-
-type MessengerMethod func(req domain.WSRequest)
 
 func NewAPI(msgsHandlerService usecase.MessagesHandlerService, usersService usecase.UsersService) *API {
 	return &API{

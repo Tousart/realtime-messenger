@@ -9,13 +9,25 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
-	"github.com/tousart/messenger/internal/domain"
+	"github.com/tousart/messenger/internal/dto"
 )
 
-// Handle requests that becomes
-// while websocket connection alive.
+type ConsumeMessageResponse struct {
+	UserID int    `json:"user_id"`
+	ChatID int    `json:"chat_id"`
+	Text   string `json:"text"`
+}
 
-func (ap *API) wsRequestHandler(ctx context.Context, conn *websocket.Conn, userID int, errChan chan<- error) {
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return r.Header.Get("Origin") == "http://localhost:8080"
+	},
+}
+
+// Handle requests that becomes while websocket connection alive
+func (ap *API) wsRequestHandler(ctx context.Context, conn *websocket.Conn, errChan chan<- error) {
 	for {
 		_, wsRequest, err := conn.ReadMessage()
 
@@ -29,8 +41,8 @@ func (ap *API) wsRequestHandler(ctx context.Context, conn *websocket.Conn, userI
 
 		log.Printf("ws request: %s\n", string(wsRequest))
 
-		var wsReq domain.WebSocketMessageRequest
-		if err := json.Unmarshal(wsRequest, &wsReq); err != nil {
+		var req WebSocketRequest
+		if err := json.Unmarshal(wsRequest, &req); err != nil {
 			select {
 			case <-ctx.Done():
 			case errChan <- err:
@@ -38,11 +50,7 @@ func (ap *API) wsRequestHandler(ctx context.Context, conn *websocket.Conn, userI
 			return
 		}
 
-		if method, ok := ap.messengerMethods[wsReq.Method]; ok {
-			req := domain.WSRequest{
-				UserID: userID,
-				Data:   wsReq.Data,
-			}
+		if method, ok := ap.messengerMethods[req.Method]; ok {
 			go method(req)
 		} else {
 			log.Printf("wsRequestHandler error: %v", errors.New("method not allowed"))
@@ -50,11 +58,13 @@ func (ap *API) wsRequestHandler(ctx context.Context, conn *websocket.Conn, userI
 	}
 }
 
+// TODO: реализовать нормальную логику консьюмера (ниже)
+// добавить прослушивание очереди с repository вверх до api
+
 // Consume messages and sending to users.
 // Messages get from channel that exists
 // only while websocket connection alive.
-
-func (ap *API) send(msg *domain.Message) {
+func (ap *API) send(msg *ConsumeMessageResponse) {
 	ap.mu.RLock()
 	defer ap.mu.RUnlock()
 
@@ -84,7 +94,7 @@ func (ap *API) consumeMessages(ctx context.Context, errChan chan<- error) {
 				return
 			}
 			msgBytes := msg.Body
-			var message domain.Message
+			var message ConsumeMessageResponse
 			if err := json.Unmarshal(msgBytes, &message); err != nil {
 				log.Printf("api: consumeMessages error: %s\n", err.Error())
 				continue
@@ -119,7 +129,7 @@ func (ap *API) connectUser(userID int, conn *websocket.Conn) {
 	for _, chatID := range chats {
 		if _, ok := ap.ChatUsers[chatID]; !ok {
 			ap.ChatUsers[chatID] = make(map[int]int)
-			ap.msgsHandlerService.AddQueueToChat(context.Background(), chatID)
+			ap.msgsHandlerService.AddQueueToChat(context.Background(), dto.ChatWSRequest{ChatID: chatID})
 		}
 		ap.ChatUsers[chatID][userID]++
 	}
@@ -153,7 +163,7 @@ func (ap *API) disconnectUser(userID int, conn *websocket.Conn) {
 			delete(ap.ChatUsers[chatID], userID)
 			if len(ap.ChatUsers[chatID]) == 0 {
 				delete(ap.ChatUsers, chatID)
-				ap.msgsHandlerService.RemoveQueueFromChat(context.Background(), chatID)
+				ap.msgsHandlerService.RemoveQueueFromChat(context.Background(), dto.ChatWSRequest{ChatID: chatID})
 			}
 		} else {
 			ap.ChatUsers[chatID][userID]--
@@ -189,7 +199,7 @@ func (ap *API) messengerWebSocketConnectionHandler(w http.ResponseWriter, r *htt
 	defer ap.disconnectUser(userID, conn)
 
 	// handle requests on websocket connection
-	go ap.wsRequestHandler(ctx, conn, userID, errChan)
+	go ap.wsRequestHandler(ctx, conn, errChan)
 
 	// consume messages to this node
 	go ap.consumeMessages(ctx, errChan)

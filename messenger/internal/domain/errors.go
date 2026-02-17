@@ -8,6 +8,7 @@ var (
 	// username
 	ErrUserNameExists    error = errors.New("username exists")
 	ErrUserNameNotExists error = errors.New("username not exists")
+	ErrBadUserName       error = errors.New("bad username")
 	// password
 	ErrBadPassword       error = errors.New("bad password")
 	ErrIncorrectPassword error = errors.New("incorrect password")

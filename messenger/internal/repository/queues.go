@@ -1,9 +1,13 @@
 package repository
 
-import "context"
+import (
+	"context"
+
+	"github.com/tousart/messenger/internal/domain"
+)
 
 type QueuesRepository interface {
-	Queues(ctx context.Context, chatID int) ([]string, error)
-	AddQueueToChat(ctx context.Context, chatID int) error
-	RemoveQueueFromChat(ctx context.Context, chatID int) error
+	Queues(ctx context.Context, chat *domain.Chat) ([]string, error)
+	AddQueueToChat(ctx context.Context, chat *domain.Chat) error
+	RemoveQueueFromChat(ctx context.Context, chat *domain.Chat) error
 }
