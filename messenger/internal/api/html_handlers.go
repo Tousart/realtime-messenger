@@ -65,7 +65,7 @@ const mainPageTemplate = `<!DOCTYPE html>
             
             ws.send(JSON.stringify({
                 method: "join",
-                data: { chat_id: chatId }
+                payload: { chat_id: chatId }
             }));
             
             document.getElementById('chatInput').focus();
@@ -87,7 +87,7 @@ const mainPageTemplate = `<!DOCTYPE html>
             
             ws.send(JSON.stringify({
                 method: "send",
-                data: {
+                payload: {
                     chat_id: currentChatId,
                     text: text
                 }

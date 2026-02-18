@@ -7,9 +7,10 @@ import (
 )
 
 type RabbitMQConnection struct {
-	conn    *amqp.Connection
-	channel *amqp.Channel
-	queue   <-chan amqp.Delivery
+	conn      *amqp.Connection
+	channel   *amqp.Channel
+	queue     <-chan amqp.Delivery
+	queueName string
 }
 
 func NewRabbitMQConnection(amqpURL, queueName string) (*RabbitMQConnection, error) {
@@ -24,6 +25,20 @@ func NewRabbitMQConnection(amqpURL, queueName string) (*RabbitMQConnection, erro
 		return nil, err
 	}
 
+	_, err = ch.QueueDeclare(
+		queueName, // имя очереди
+		true,      // durable
+		false,     // delete when unused
+		false,     // exclusive
+		false,     // no-wait
+		nil,       // аргументы
+	)
+	if err != nil {
+		ch.Close()
+		conn.Close()
+		return nil, fmt.Errorf("rabbitmq: RabbitMQConnection error: %w", err)
+	}
+
 	msgsQueue, err := ch.Consume(
 		queueName, // имя очереди
 		"",        // consumer tag
@@ -36,13 +51,14 @@ func NewRabbitMQConnection(amqpURL, queueName string) (*RabbitMQConnection, erro
 	if err != nil {
 		ch.Close()
 		conn.Close()
-		return nil, fmt.Errorf("rabbitmq: RabbitMQConnection error: %s", err.Error())
+		return nil, fmt.Errorf("rabbitmq: RabbitMQConnection error: %w", err)
 	}
 
 	return &RabbitMQConnection{
-		conn:    conn,
-		channel: ch,
-		queue:   msgsQueue,
+		conn:      conn,
+		channel:   ch,
+		queue:     msgsQueue,
+		queueName: queueName,
 	}, nil
 }
 
@@ -52,6 +68,10 @@ func (rc *RabbitMQConnection) Channel() *amqp.Channel {
 
 func (rc *RabbitMQConnection) Queue() <-chan amqp.Delivery {
 	return rc.queue
+}
+
+func (rc *RabbitMQConnection) QueueName() string {
+	return rc.queueName
 }
 
 func (rc *RabbitMQConnection) Close() {

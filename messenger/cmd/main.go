@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/tousart/messenger/config"
 	"github.com/tousart/messenger/internal/api"
+	infrarabbitmq "github.com/tousart/messenger/internal/infrastructure/rabbitmq"
 	"github.com/tousart/messenger/internal/repository/postgres"
 	"github.com/tousart/messenger/internal/repository/rabbitmq"
 	"github.com/tousart/messenger/internal/repository/redis"
@@ -28,32 +29,50 @@ func main() {
 	// Load config
 	cfg := config.LoadConfig()
 
-	// Connections
+	/*
+
+		Подключение ко внешним инструментам
+
+	*/
+
 	// Connect to PSQL
 	psqlDB, err := pkgpostgres.ConnectToPSQL(cfg.PostgreSQL.Addr)
 	if err != nil {
-		log.Fatalf("failed to connect to psql")
+		log.Fatalf("failed to connect to psql: %v\n", err)
 	}
 	// Create Redis-client
 	redisClient := pkgredis.CreateRedisClient(cfg.Redis.Addr)
 	// Connection to RabbitMQ
 	rabbitMQConn, err := pkgrabbitmq.NewRabbitMQConnection(cfg.RabbitMQ.Addr, cfg.RabbitMQ.MessagesQueue)
 	if err != nil {
-		log.Fatalf("failed to connect to rabbitmq")
+		log.Fatalf("failed to connect to rabbitmq: %v\n", err)
 	}
 	defer rabbitMQConn.Close()
 
+	/*
+
+		Создание экземпляров repository, usecase, infrastructure
+
+	*/
+
+	// websocket manager
+	wsManager := api.NewWebSocketManager()
+
 	// messages handler repository
-	msgsHandlerRepo, err := rabbitmq.NewRabbitMQMessagesHandlerRepository(rabbitMQConn.Channel(), rabbitMQConn.Queue(), cfg.RabbitMQ.MessagesQueue)
+	msgsHandlerRepo, err := rabbitmq.NewRabbitMQMessagesHandlerRepository(rabbitMQConn.Channel(), rabbitMQConn.QueueName())
 	if err != nil {
-		log.Fatalf("failed to create publisher repository: %v", err)
+		log.Fatalf("failed to create publisher repository: %v\n", err)
 	}
 
 	// queues repository
-	queuesRepo := redis.NewRedisQueuesRepository(redisClient, cfg.RabbitMQ.MessagesQueue) // messages queue use in rabbitmq too
+	queuesRepo := redis.NewRedisQueuesRepository(redisClient, rabbitMQConn.QueueName())
 
 	// messages handler service
-	msgsHandlerService := service.NewMessagesHandlerService(msgsHandlerRepo, queuesRepo)
+	msgsHandlerService := service.NewMessagesHandlerService(wsManager, msgsHandlerRepo, queuesRepo)
+
+	// go consume messages
+	msgsConsumer := infrarabbitmq.NewRabbitMQConsumer(msgsHandlerService, rabbitMQConn.Queue())
+	go msgsConsumer.ConsumeMessages(ctx)
 
 	// users repository
 	usersRepo, err := postgres.NewPSQLUsersRepository(psqlDB)
@@ -69,11 +88,17 @@ func main() {
 	// users service
 	usersService := service.NewUsersService(usersRepo, sessionsRepo, pswrdHasher)
 
+	/*
+
+		Создание экземпляра api и запуск сервера
+
+	*/
+
 	// api methods router
 	r := chi.NewRouter()
 
 	// create server api
-	srvApi := api.NewAPI(msgsHandlerService, usersService)
+	srvApi := api.NewAPI(wsManager, msgsHandlerService, usersService)
 	srvApi.WithHandlers(r)
 	srvApi.WithMethods()
 

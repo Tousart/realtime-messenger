@@ -1,10 +1,7 @@
 package api
 
 import (
-	"sync"
-
 	"github.com/go-chi/chi/v5"
-	"github.com/gorilla/websocket"
 	"github.com/tousart/messenger/internal/usecase"
 )
 
@@ -12,17 +9,8 @@ type API struct {
 	// methods that are processed by websocket connection
 	messengerMethods map[string]MessengerMethod
 
-	// control users connections
-	UserConnections map[int][]*websocket.Conn
-
-	// control reflections chat-user
-	ChatUsers map[int]map[int]int
-
-	// control reflection user an his current chat
-	UserChat map[int]int
-
-	// for isolated access to maps
-	mu *sync.RWMutex
+	// WebSocketManager
+	wsManager *WebSocketManager
 
 	// publisher service to balance messages
 	msgsHandlerService usecase.MessagesHandlerService
@@ -31,12 +19,9 @@ type API struct {
 	usersService usecase.UsersService
 }
 
-func NewAPI(msgsHandlerService usecase.MessagesHandlerService, usersService usecase.UsersService) *API {
+func NewAPI(wsManager *WebSocketManager, msgsHandlerService usecase.MessagesHandlerService, usersService usecase.UsersService) *API {
 	return &API{
-		UserConnections:    make(map[int][]*websocket.Conn),
-		ChatUsers:          make(map[int]map[int]int),
-		UserChat:           make(map[int]int),
-		mu:                 &sync.RWMutex{},
+		wsManager:          wsManager,
 		msgsHandlerService: msgsHandlerService,
 		usersService:       usersService,
 	}
