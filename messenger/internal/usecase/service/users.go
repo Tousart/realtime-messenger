@@ -19,6 +19,7 @@ type UsersService struct {
 func NewUsersService(userRepo repository.UsersRepository, sessionsRepo repository.SessionsRepository, pswrdHasher pkg.PasswordHasher) *UsersService {
 	return &UsersService{
 		usersRepo:      userRepo,
+		sessionsRepo:   sessionsRepo,
 		passwordHasher: pswrdHasher,
 	}
 }

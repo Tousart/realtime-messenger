@@ -41,7 +41,7 @@ func (r *RedisSessionsRepository) SessionData(ctx context.Context, sessionID str
 
 func (r *RedisSessionsRepository) GenerateSessionID(ctx context.Context, user *domain.User) (string, error) {
 	sessionID := uuid.New().String()
-	data, err := json.Marshal(*user)
+	data, err := json.Marshal(user)
 	if err != nil {
 		return "", fmt.Errorf("redis: GenerateSessionID: %w", err)
 	}
