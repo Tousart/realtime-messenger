@@ -13,6 +13,9 @@ services:
         condition: service_healthy 
       redis:
         condition: service_healthy
+      # зависимость во время локальной разработки
+      migrations:
+        condition: service_completed_successfully
     networks:
      - realtime
 
@@ -44,6 +47,38 @@ services:
       retries: 5
     networks:
      - realtime
+
+  # postgresql для локальной разработки
+  postgresql:
+    image: postgres:18-alpine
+    container_name: postgresql
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: messenger_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d messenger_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - realtime
+
+  # миграции для локальной разработки
+  migrations:
+    image: migrate/migrate
+    container_name: migrations
+    volumes:
+      - ./messenger/migrations:/migrations
+    command: 
+      - -path=/migrations/
+      - -database=postgres://postgres:password@postgresql:5432/messenger_db?sslmode=disable
+      - up
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    networks:
+      - realtime
 
 networks:
   realtime:
