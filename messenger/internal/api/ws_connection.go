@@ -73,17 +73,16 @@ func (ap *API) connectUser(userID int, conn *websocket.Conn) {
 	defer ap.wsManager.Mu.Unlock()
 
 	// user - connection
-	if ap.wsManager.UserConnections[userID] == nil {
-		ap.wsManager.UserConnections[userID] = []*websocket.Conn{conn}
-	} else {
-		ap.wsManager.UserConnections[userID] = append(ap.wsManager.UserConnections[userID], conn)
-	}
+	ap.wsManager.UserConnections[userID] = append(ap.wsManager.UserConnections[userID], conn)
 
 	// chatID - user
 	for _, chatID := range chats {
 		if _, ok := ap.wsManager.ChatUsers[chatID]; !ok {
+			if err := ap.msgsHandlerService.AddQueueToChat(context.Background(), dto.ChatWSRequest{ChatID: chatID}); err != nil {
+				log.Printf("connectUser: failed add queue to chat: %v\n", err)
+				continue
+			}
 			ap.wsManager.ChatUsers[chatID] = make(map[int]int)
-			ap.msgsHandlerService.AddQueueToChat(context.Background(), dto.ChatWSRequest{ChatID: chatID})
 		}
 		ap.wsManager.ChatUsers[chatID][userID]++
 	}
@@ -115,11 +114,14 @@ func (ap *API) disconnectUser(userID int, conn *websocket.Conn) {
 	// chatID - user
 	for _, chatID := range chats {
 		if ap.wsManager.ChatUsers[chatID][userID] == 1 {
-			delete(ap.wsManager.ChatUsers[chatID], userID)
-			if len(ap.wsManager.ChatUsers[chatID]) == 0 {
+			if len(ap.wsManager.ChatUsers[chatID]) == 1 {
+				if err := ap.msgsHandlerService.RemoveQueueFromChat(context.Background(), dto.ChatWSRequest{ChatID: chatID}); err != nil {
+					log.Printf("disconnectUser: failed remove queue from chat: %v\n", err)
+					continue
+				}
 				delete(ap.wsManager.ChatUsers, chatID)
-				ap.msgsHandlerService.RemoveQueueFromChat(context.Background(), dto.ChatWSRequest{ChatID: chatID})
 			}
+			delete(ap.wsManager.ChatUsers[chatID], userID)
 		} else {
 			ap.wsManager.ChatUsers[chatID][userID]--
 		}
