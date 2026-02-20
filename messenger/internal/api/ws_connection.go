@@ -6,9 +6,9 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/websocket"
-	"github.com/tousart/messenger/internal/dto"
 )
 
 var upgrader = websocket.Upgrader{
@@ -78,7 +78,7 @@ func (ap *API) connectUser(userID int, conn *websocket.Conn) {
 	// chatID - user
 	for _, chatID := range chats {
 		if _, ok := ap.wsManager.ChatUsers[chatID]; !ok {
-			if err := ap.msgsHandlerService.AddQueueToChat(context.Background(), dto.ChatWSRequest{ChatID: chatID}); err != nil {
+			if err := ap.msgsHandlerService.SubscribeToChats(context.Background(), strconv.Itoa(chatID)); err != nil {
 				log.Printf("connectUser: failed add queue to chat: %v\n", err)
 				continue
 			}
@@ -115,7 +115,7 @@ func (ap *API) disconnectUser(userID int, conn *websocket.Conn) {
 	for _, chatID := range chats {
 		if ap.wsManager.ChatUsers[chatID][userID] == 1 {
 			if len(ap.wsManager.ChatUsers[chatID]) == 1 {
-				if err := ap.msgsHandlerService.RemoveQueueFromChat(context.Background(), dto.ChatWSRequest{ChatID: chatID}); err != nil {
+				if err := ap.msgsHandlerService.UnsubscribeFromChats(context.Background(), strconv.Itoa(chatID)); err != nil {
 					log.Printf("disconnectUser: failed remove queue from chat: %v\n", err)
 					continue
 				}
