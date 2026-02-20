@@ -7,10 +7,12 @@ import (
 )
 
 type MessagesHandlerService interface {
-	PublishMessageToQueues(ctx context.Context, message dto.SendMessageWSRequest) error
+	PublishMessageToChat(ctx context.Context, message dto.SendMessageWSRequest) error
+	SubscribeToChats(ctx context.Context, chatIDs ...string) error
+	UnsubscribeFromChats(ctx context.Context, chatIDs ...string) error
+
+	// To work with websocket manager
 	SendMessageToUsersConnections(ctx context.Context, input dto.ConsumingMessage) error
-	AddQueueToChat(ctx context.Context, input dto.ChatWSRequest) error
-	RemoveQueueFromChat(ctx context.Context, input dto.ChatWSRequest) error
 }
 
 // WebSocketManager Interface - для того, чтобы usecase вызывал методы структур, хранящих websocket-сосединения.

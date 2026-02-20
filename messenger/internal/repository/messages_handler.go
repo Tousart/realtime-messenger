@@ -2,10 +2,10 @@ package repository
 
 import (
 	"context"
-
-	"github.com/tousart/messenger/internal/domain"
 )
 
 type MessagesHandlerRepository interface {
-	PublishMessageToQueues(ctx context.Context, queues []string, message *domain.Message) error
+	PublishMessageToChat(ctx context.Context, chatID string, messagePayload []byte) error
+	SubscribeToChats(ctx context.Context, chatIDs ...string) error
+	UnsubscribeFromChats(ctx context.Context, chatIDs ...string) error
 }
