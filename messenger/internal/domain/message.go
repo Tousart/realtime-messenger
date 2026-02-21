@@ -1,9 +1,5 @@
 package domain
 
-import amqp "github.com/rabbitmq/amqp091-go"
-
-type MessagesQueue <-chan amqp.Delivery
-
 type Message struct {
 	UserID int    `json:"user_id"`
 	ChatID int    `json:"chat_id"`

@@ -8,10 +8,6 @@ import (
 
 func TestLoadConfigDefault(t *testing.T) {
 	expected := &Config{
-		RabbitMQ: RabbitMQCfg{
-			Addr:          DEFAULT_RABBITMQ_ADDR,
-			MessagesQueue: DEFAULT_MESSAGES_QUEUE,
-		},
 		Redis: RedisCfg{
 			Addr: DEFAULT_REDIS_ADDR,
 		},

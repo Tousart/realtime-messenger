@@ -5,19 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
-	"net/http"
 	"strconv"
 
 	"github.com/gorilla/websocket"
 )
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return r.Header.Get("Origin") == "http://localhost:8080"
-	},
-}
 
 /*
 
@@ -50,7 +41,9 @@ func (ap *API) wsRequestHandler(ctx context.Context, conn *websocket.Conn, metad
 		}
 
 		if method, ok := ap.messengerMethods[req.Method]; ok {
-			go method(metadata, req)
+			// TODO: пул горутин, которые будут параллельно обрабатывать запросы пользователя
+			// go method(metadata, req)
+			method(metadata, req)
 		} else {
 			log.Printf("wsRequestHandler error: %v", errors.New("method not allowed"))
 		}
@@ -125,52 +118,5 @@ func (ap *API) disconnectUser(userID int, conn *websocket.Conn) {
 		} else {
 			ap.wsManager.ChatUsers[chatID][userID]--
 		}
-	}
-}
-
-/*
-
-	Обработчик улучшения соединения до WebSocket
-
-*/
-
-func (ap *API) messengerWebSocketConnectionHandler(w http.ResponseWriter, r *http.Request) {
-	// TODO...
-	// authorization
-	// get userID
-	meta := Metadata{
-		UserID: UserID,
-	}
-	// userID := UserID
-
-	// upgrade connection to websocket
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Printf("messengerWebSocketConnectionHandler error: %s\n", err.Error())
-		return
-	}
-	defer conn.Close()
-
-	// ctx and errors channel for correct shutdown connection
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	errChan := make(chan error)
-
-	// connect and disconnect user
-	// add users connection and chats to maps
-	ap.connectUser(meta.UserID, conn)
-	defer ap.disconnectUser(meta.UserID, conn)
-
-	// handle requests on websocket connection
-	go ap.wsRequestHandler(ctx, conn, &meta, errChan)
-
-	// consume messages to this node
-	// go ap.consumeMessages(ctx, errChan)
-
-	select {
-	case <-ctx.Done():
-	case err := <-errChan:
-		log.Printf("messengerWebSocketConnectionHandler error: %s\n", err.Error())
 	}
 }

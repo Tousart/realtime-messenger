@@ -16,7 +16,6 @@ type Server struct {
 	Addr   string
 	srv    *http.Server
 	router *chi.Mux
-	Wg     *sync.WaitGroup
 }
 
 func NewServer(addr string, r *chi.Mux) *Server {
@@ -29,23 +28,22 @@ func NewServer(addr string, r *chi.Mux) *Server {
 		Addr:   addr,
 		srv:    srv,
 		router: r,
-		Wg:     &sync.WaitGroup{},
 	}
 }
 
-func (s *Server) CreateAndRunServer(ctx context.Context) {
+func (s *Server) CreateAndRunServer(ctx context.Context, wg *sync.WaitGroup) {
 	errChan := make(chan error, 1)
 
-	s.Wg.Add(1)
-	go s.runServer(errChan)
+	wg.Go(func() {
+		s.runServer(errChan)
+	})
 
-	s.Wg.Add(1)
-	go s.shutdownServer(ctx, errChan)
+	wg.Go(func() {
+		s.shutdownServer(ctx, errChan)
+	})
 }
 
 func (s *Server) runServer(errChan chan error) {
-	defer s.Wg.Done()
-
 	log.Printf("server run on %s\n", s.Addr)
 
 	if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -58,8 +56,6 @@ func (s *Server) runServer(errChan chan error) {
 }
 
 func (s *Server) shutdownServer(ctx context.Context, errChan chan error) {
-	defer s.Wg.Done()
-
 	select {
 	case <-ctx.Done():
 	case <-errChan:
