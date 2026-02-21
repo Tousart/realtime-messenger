@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	SESSION_EXPIRATION_HOURS = 6
+	SessionExpirationHours = 6
 )
 
 type RedisSessionsRepository struct {
@@ -46,7 +46,7 @@ func (r *RedisSessionsRepository) GenerateSessionID(ctx context.Context, user *d
 		return "", fmt.Errorf("redis: GenerateSessionID: %w", err)
 	}
 
-	if err := r.client.Set(ctx, sessionID, data, 6*time.Hour).Err(); err != nil {
+	if err := r.client.Set(ctx, sessionID, data, SessionExpirationHours*time.Hour).Err(); err != nil {
 		return "", fmt.Errorf("redis: GenerateSessionID: %w", err)
 	}
 	return sessionID, nil

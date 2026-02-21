@@ -69,3 +69,14 @@ func (us *UsersService) LoginUser(ctx context.Context, input dto.LoginUserReques
 		SessionID: sessionID,
 	}, nil
 }
+
+func (us *UsersService) ValidateSessionID(ctx context.Context, sessionID string) (*dto.UserPayload, error) {
+	user, err := us.sessionsRepo.SessionData(ctx, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("service: ValidateSessionID: %w", err)
+	}
+	return &dto.UserPayload{
+		UserID:   user.UserID,
+		UserName: user.UserName,
+	}, nil
+}

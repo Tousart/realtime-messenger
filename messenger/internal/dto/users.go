@@ -17,3 +17,8 @@ type LoginUserRequest struct {
 type LoginUserResponse struct {
 	SessionID string `json:"session_id"`
 }
+
+type UserPayload struct {
+	UserID   int    `json:"user_id"`
+	UserName string `json:"user_name"`
+}

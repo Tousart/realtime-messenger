@@ -44,5 +44,3 @@ func (ws *WebSocketManager) SendMessageToUsersConnections(ctx context.Context, m
 	}
 	return nil
 }
-
-// func ()

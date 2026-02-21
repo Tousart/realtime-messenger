@@ -7,6 +7,7 @@ import (
 )
 
 type UsersService interface {
-	RegisterUser(ctx context.Context, user dto.RegisterUserRequest) (*dto.RegisterUserResponse, error)
+	RegisterUser(ctx context.Context, input dto.RegisterUserRequest) (*dto.RegisterUserResponse, error)
 	LoginUser(ctx context.Context, input dto.LoginUserRequest) (*dto.LoginUserResponse, error)
+	ValidateSessionID(ctx context.Context, sessionID string) (*dto.UserPayload, error)
 }

@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/go-chi/chi/v5"
@@ -23,6 +24,7 @@ import (
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+	wg := &sync.WaitGroup{}
 
 	// Load config
 	cfg := config.LoadConfig()
@@ -39,10 +41,9 @@ func main() {
 		log.Fatalf("failed to connect to psql: %v\n", err)
 	}
 	// Create Redis-client
-	redisClient := pkgredis.CreateRedisClient(cfg.Redis.Addr)
+	redisClient := pkgredis.NewClient(cfg.Redis.Addr)
 	defer redisClient.Close()
-	redisPubsub := pkgredis.CreateRedisPubSubObject(context.Background(), redisClient)
-	defer redisPubsub.Close()
+	redisPubsub := redisClient.CreatePubSub(context.Background())
 
 	/*
 
@@ -54,14 +55,16 @@ func main() {
 	wsManager := api.NewWebSocketManager()
 
 	// messages handler repository
-	msgsHandlerRepo := redis.NewRedisMessagesHandlerRepository(redisClient, redisPubsub)
+	msgsHandlerRepo := redis.NewRedisMessagesHandlerRepository(redisClient.Client(), redisPubsub)
 
 	// messages handler service
 	msgsHandlerService := service.NewMessagesHandlerService(wsManager, msgsHandlerRepo)
 
 	// go consume messages
 	msgsConsumer := infraredis.NewRedisConsumer(msgsHandlerService, redisPubsub)
-	go msgsConsumer.ConsumeMessages(ctx)
+	wg.Go(func() {
+		msgsConsumer.ConsumeMessages(ctx)
+	})
 
 	// users repository
 	usersRepo, err := postgres.NewPSQLUsersRepository(psqlDB)
@@ -73,7 +76,7 @@ func main() {
 	// to hashing users password
 	pswrdHasher := pkghashpassword.NewBCryptPasswordHasher()
 	// sessions repository
-	sessionsRepo := redis.NewRedisSessionsRepository(redisClient)
+	sessionsRepo := redis.NewRedisSessionsRepository(redisClient.Client())
 	// users service
 	usersService := service.NewUsersService(usersRepo, sessionsRepo, pswrdHasher)
 
@@ -88,12 +91,14 @@ func main() {
 
 	// create server api
 	srvApi := api.NewAPI(wsManager, msgsHandlerService, usersService)
-	srvApi.WithHandlers(r)
+	// isProd - boolean flag to local development (false if local else true)
+	isProd := true
+	srvApi.WithHandlers(r, isProd)
 	srvApi.WithMethods()
 
 	// create and run server
 	srv := server.NewServer(cfg.Server.Addr, r)
-	srv.CreateAndRunServer(ctx)
+	srv.CreateAndRunServer(ctx, wg)
 
-	srv.Wg.Wait()
+	wg.Wait()
 }

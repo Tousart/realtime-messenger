@@ -27,22 +27,25 @@ func NewAPI(wsManager *WebSocketManager, msgsHandlerService usecase.MessagesHand
 	}
 }
 
-func (ap *API) WithHandlers(r *chi.Mux) {
-	r.Route("/", func(r chi.Router) {
-		// homepage
-		r.Get("/", ap.getHomePageHandler)
+func (ap *API) WithHandlers(r *chi.Mux, isProd bool) {
+	// homepage
+	r.Get("/", ap.getHomePageHandler)
 
-		// messenger
-		// method to upgrade connection to websocket
-		r.Get("/messenger", ap.messengerWebSocketConnectionHandler)
-
-		// authorization
-		r.Route("/auth", func(r chi.Router) {
-			// r.Get("/", ap.getAuthPage)
-			r.Post("/register", ap.registerHandler)
-			r.Post("/login", ap.loginHandler)
-		})
+	r.Route("/auth", func(r chi.Router) {
+		r.Post("/register", ap.registerHandler)
+		r.Get("/login", ap.getLoginPageHandler)
+		r.Post("/login", ap.loginHandler)
 	})
+
+	// method to upgrade connection to websocket
+	r.Get("/messenger", ap.messengerWebSocketConnectionHandler)
+
+	// service handlers
+	// r.Group(func(r chi.Router) {
+	// 	if isProd {
+	// 		r.Use(middleware.Authorization(ap.usersService))
+	// 	}
+	// })
 }
 
 func (ap *API) WithMethods() {
