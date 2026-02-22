@@ -3,7 +3,6 @@ package redis
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -21,8 +20,6 @@ func NewRedisMessagesHandlerRepository(client *redis.Client, pubsub *redis.PubSu
 }
 
 func (mh *RedisMessagesHandlerRepository) PublishMessageToChat(ctx context.Context, chatID string, messagePayload []byte) error {
-	log.Printf("сообщение опубликовано в repository\n")
-
 	if err := mh.client.Publish(ctx, chatID, messagePayload).Err(); err != nil {
 		return fmt.Errorf("redis: PublishMessageToChat: %w", err)
 	}

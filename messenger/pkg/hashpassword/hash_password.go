@@ -1,4 +1,4 @@
-package pkg
+package hashpassword
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 
 type PasswordHasher interface {
 	Hash(password string) (string, error)
-	Compare(password, hash string) bool
+	Compare(hashedPassword, password string) bool
 }
 
 type BCryptPasswordHasher struct{}

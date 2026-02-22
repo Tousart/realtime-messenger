@@ -57,7 +57,7 @@ func (us *UsersService) LoginUser(ctx context.Context, input dto.LoginUserReques
 		return nil, fmt.Errorf("service: LoginUser: %w", err)
 	}
 
-	if !us.passwordHasher.Compare(input.Password, user.Password) {
+	if !us.passwordHasher.Compare(user.Password, input.Password) {
 		return nil, fmt.Errorf("service: LoginUser: %w", domain.ErrIncorrectPassword)
 	}
 
@@ -71,7 +71,7 @@ func (us *UsersService) LoginUser(ctx context.Context, input dto.LoginUserReques
 }
 
 func (us *UsersService) ValidateSessionID(ctx context.Context, sessionID string) (*dto.UserPayload, error) {
-	user, err := us.sessionsRepo.SessionData(ctx, sessionID)
+	user, err := us.sessionsRepo.SessionIDPayload(ctx, sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("service: ValidateSessionID: %w", err)
 	}

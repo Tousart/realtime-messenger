@@ -26,15 +26,18 @@ func NewRedisSessionsRepository(client *rdb.Client) *RedisSessionsRepository {
 	}
 }
 
-func (r *RedisSessionsRepository) SessionData(ctx context.Context, sessionID string) (*domain.User, error) {
-	data, err := r.client.Get(ctx, sessionID).Bytes()
+func (r *RedisSessionsRepository) SessionIDPayload(ctx context.Context, sessionID string) (*domain.User, error) {
+	payloadBytes, err := r.client.Get(ctx, sessionID).Bytes()
 	if err != nil {
-		return nil, fmt.Errorf("redis: SessionID: %w", err)
+		if payloadBytes == nil {
+			return nil, fmt.Errorf("redis: SessionIDPayload: %w", domain.ErrSessionIDNotExists)
+		}
+		return nil, fmt.Errorf("redis: SessionIDPayload: %w", err)
 	}
 
 	var user domain.User
-	if err := json.Unmarshal(data, &sessionID); err != nil {
-		return nil, fmt.Errorf("redis: SessionID: %w", err)
+	if err := json.Unmarshal(payloadBytes, &user); err != nil {
+		return nil, fmt.Errorf("redis: SessionIDPayload: %w", err)
 	}
 	return &user, nil
 }

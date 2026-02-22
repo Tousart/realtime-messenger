@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/tousart/messenger/internal/domain"
 	"github.com/tousart/messenger/internal/usecase"
 )
 
@@ -17,7 +18,7 @@ func Authorization(usersService usecase.UsersService) func(http.Handler) http.Ha
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// TODO: под заголовок
 
-			cookie, err := r.Cookie("session_id")
+			cookie, err := r.Cookie(domain.CookieSessionID)
 			if err != nil {
 				log.Printf("authorization error: get cookie: %v\n", err)
 				http.Redirect(w, r, "/auth/login", http.StatusFound)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strconv"
 
 	"github.com/tousart/messenger/internal/dto"
@@ -30,8 +29,6 @@ func (s *MessagesHandlerService) PublishMessageToChat(ctx context.Context, input
 		return fmt.Errorf("service: PublishMessageToChat error: %w", err)
 	}
 
-	log.Printf("сообщение опубликовано в usecase\n")
-
 	err = s.msgsHandlerRepo.PublishMessageToChat(ctx, strconv.Itoa(input.ChatID), messagePayload)
 	if err != nil {
 		return fmt.Errorf("service: PublishMessageToChat error: %w", err)
@@ -54,8 +51,6 @@ func (s MessagesHandlerService) UnsubscribeFromChats(ctx context.Context, chatID
 }
 
 func (s *MessagesHandlerService) SendMessageToUsersConnections(ctx context.Context, input dto.ConsumingMessage) error {
-	log.Printf("сообщение получено в usecase\n")
-
 	if err := s.wsManager.SendMessageToUsersConnections(ctx, input); err != nil {
 		return fmt.Errorf("service: SendMessageToUsersConnections error: %w", err)
 	}

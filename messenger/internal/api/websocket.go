@@ -38,7 +38,7 @@ func (ws *WebSocketManager) SendMessageToUsersConnections(ctx context.Context, m
 	for userID := range ws.ChatUsers[message.ChatID] {
 		for _, conn := range ws.UserConnections[userID] {
 			if err := conn.WriteMessage(1, []byte(message.Text)); err != nil {
-				log.Printf("send error: %s\n", err.Error())
+				log.Printf("send message to users connections error: %v\n", err)
 			}
 		}
 	}
