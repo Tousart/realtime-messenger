@@ -28,8 +28,6 @@ func (ap *API) SendMessage(metadata *Metadata, req *WebSocketRequest) {
 	}
 	message.UserID = metadata.UserID
 
-	log.Printf("сообщение опубликовано в api\n")
-
 	if err := ap.msgsHandlerService.PublishMessageToChat(context.Background(), message); err != nil {
 		log.Printf("SendMessage error: %s\n", err.Error())
 		return

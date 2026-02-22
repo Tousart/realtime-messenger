@@ -3,12 +3,13 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 
 	"github.com/gorilla/websocket"
+	"github.com/tousart/messenger/internal/domain"
 	"github.com/tousart/messenger/internal/dto"
-	"github.com/tousart/messenger/internal/middleware"
 )
 
 var upgrader = websocket.Upgrader{
@@ -26,46 +27,40 @@ var upgrader = websocket.Upgrader{
 */
 
 func (ap *API) messengerWebSocketConnectionHandler(w http.ResponseWriter, r *http.Request) {
-	// build
-	cookie, err := r.Cookie("session_id")
+	cookie, err := r.Cookie(domain.CookieSessionID)
 	if err != nil {
-		log.Printf("authorization error: get cookie: %v\n", err)
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
+
 	userPayload, err := ap.usersService.ValidateSessionID(r.Context(), cookie.Value)
 	if err != nil {
+		if errors.Is(err, domain.ErrSessionIDNotExists) {
+			http.Error(w, "session id not exists", http.StatusUnauthorized)
+			return
+		}
+
 		log.Printf("authorization error: validate session id: %v\n", err)
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-	// build
-
-	userPayload, ok := r.Context().Value(middleware.ContextKeyAuthMetadata).(*dto.UserPayload)
-	if !ok || userPayload == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	// upgrade connection to websocket
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("messengerWebSocketConnectionHandler error: %s\n", err.Error())
+		log.Printf("messengerWebSocketConnectionHandler error: %v\n", err)
+		http.Error(w, "websocket connection failed", http.StatusInternalServerError)
 		return
 	}
 	defer conn.Close()
 
-	// ctx and errors channel for correct shutdown connection
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
 	errChan := make(chan error)
 
-	// connect and disconnect user: add users connection and chats to maps
 	ap.connectUser(userPayload.UserID, conn)
 	defer ap.disconnectUser(userPayload.UserID, conn)
 
-	// handle requests on websocket connection
 	metadata := Metadata{
 		UserID: userPayload.UserID,
 	}
@@ -78,10 +73,15 @@ func (ap *API) messengerWebSocketConnectionHandler(w http.ResponseWriter, r *htt
 	}
 }
 
+/*
+
+	Обработчик регистрации пользователя
+
+*/
+
 func (ap *API) registerHandler(w http.ResponseWriter, r *http.Request) {
 	var req dto.RegisterUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Printf("ошибка при регистрации: %v\n", err)
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
@@ -89,18 +89,36 @@ func (ap *API) registerHandler(w http.ResponseWriter, r *http.Request) {
 
 	response, err := ap.usersService.RegisterUser(r.Context(), req)
 	if err != nil {
-		log.Printf("ошибка при регистрации: %v\n", err)
+		if errors.Is(err, domain.ErrUserExists) {
+			http.Error(w, "user exists", http.StatusBadRequest)
+			return
+		}
+		log.Printf("register error: %v\n", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
+	response.RedirectPath = "/"
 
-	w.WriteHeader(http.StatusOK)
+	http.SetCookie(w, &http.Cookie{
+		Name:     domain.CookieSessionID,
+		Value:    response.SessionID,
+		Path:     "/",
+		HttpOnly: true,
+	})
+
+	w.WriteHeader(http.StatusCreated)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("ошибка при регистрации: %v\n", err)
+		log.Printf("register error: %v\n", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 }
+
+/*
+
+	Обработчик аутентификации пользователя
+
+*/
 
 func (ap *API) loginHandler(w http.ResponseWriter, r *http.Request) {
 	var req dto.LoginUserRequest
@@ -112,12 +130,29 @@ func (ap *API) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	response, err := ap.usersService.LoginUser(r.Context(), req)
 	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			http.Error(w, "user not found", http.StatusNotFound)
+			return
+		} else if errors.Is(err, domain.ErrIncorrectPassword) {
+			http.Error(w, "incorrect password", http.StatusBadRequest)
+			return
+		}
+		log.Printf("login error: %v\n", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
+	response.RedirectPath = "/"
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     domain.CookieSessionID,
+		Value:    response.SessionID,
+		Path:     "/",
+		HttpOnly: true,
+	})
 
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("login error: %v\n", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

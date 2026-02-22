@@ -6,7 +6,8 @@ type RegisterUserRequest struct {
 }
 
 type RegisterUserResponse struct {
-	SessionID string `json:"session_id"`
+	SessionID    string `json:"session_id"`
+	RedirectPath string `json:"redirect"`
 }
 
 type LoginUserRequest struct {
@@ -15,7 +16,8 @@ type LoginUserRequest struct {
 }
 
 type LoginUserResponse struct {
-	SessionID string `json:"session_id"`
+	SessionID    string `json:"session_id"`
+	RedirectPath string `json:"redirect"`
 }
 
 type UserPayload struct {

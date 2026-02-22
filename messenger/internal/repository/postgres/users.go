@@ -34,7 +34,7 @@ func (r *PSQLUsersRepository) RegisterUser(ctx context.Context, user *domain.Use
 		return 0, fmt.Errorf("postgres: RegisterUser: %w", err)
 	}
 	if exists {
-		return 0, fmt.Errorf("postgres: RegisterUser: %w", domain.ErrUserNameExists)
+		return 0, fmt.Errorf("postgres: RegisterUser: %w", domain.ErrUserExists)
 	}
 
 	_, err = tx.ExecContext(ctx, `INSERT INTO users (user_name, password, created_at, updated_at) VALUES ($1, $2, $3, $4)`, user.UserName, user.Password, time.Now(), time.Now())
@@ -67,7 +67,7 @@ func (r *PSQLUsersRepository) User(ctx context.Context, userName string) (*domai
 
 	if err := tx.QueryRowContext(ctx, `SELECT user_id, password FROM users WHERE user_name = $1`, userName).Scan(&user.UserID, &user.Password); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("postgres: User: %w", domain.ErrUserNameNotExists)
+			return nil, fmt.Errorf("postgres: User: %w", domain.ErrUserNotFound)
 		}
 		return nil, fmt.Errorf("postgres: User: %w", err)
 	}

@@ -3,11 +3,11 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log"
 	"strconv"
 
 	"github.com/gorilla/websocket"
+	"github.com/tousart/messenger/internal/domain"
 )
 
 /*
@@ -20,7 +20,6 @@ import (
 func (ap *API) wsRequestHandler(ctx context.Context, conn *websocket.Conn, metadata *Metadata, errChan chan<- error) {
 	for {
 		_, wsRequest, err := conn.ReadMessage()
-
 		if err != nil {
 			select {
 			case <-ctx.Done():
@@ -31,8 +30,8 @@ func (ap *API) wsRequestHandler(ctx context.Context, conn *websocket.Conn, metad
 
 		log.Printf("ws request: %s\n", string(wsRequest))
 
-		req := &WebSocketRequest{}
-		if err := json.Unmarshal(wsRequest, req); err != nil {
+		var req WebSocketRequest
+		if err = json.Unmarshal(wsRequest, &req); err != nil {
 			select {
 			case <-ctx.Done():
 			case errChan <- err:
@@ -43,9 +42,9 @@ func (ap *API) wsRequestHandler(ctx context.Context, conn *websocket.Conn, metad
 		if method, ok := ap.messengerMethods[req.Method]; ok {
 			// TODO: пул горутин, которые будут параллельно обрабатывать запросы пользователя
 			// go method(metadata, req)
-			method(metadata, req)
+			method(metadata, &req)
 		} else {
-			log.Printf("wsRequestHandler error: %v", errors.New("method not allowed"))
+			log.Printf("wsRequestHandler error: %v\n", domain.ErrMethodNoTAllowed)
 		}
 	}
 }
@@ -72,7 +71,7 @@ func (ap *API) connectUser(userID int, conn *websocket.Conn) {
 	for _, chatID := range chats {
 		if _, ok := ap.wsManager.ChatUsers[chatID]; !ok {
 			if err := ap.msgsHandlerService.SubscribeToChats(context.Background(), strconv.Itoa(chatID)); err != nil {
-				log.Printf("connectUser: failed add queue to chat: %v\n", err)
+				log.Printf("connectUser: failed subscribe user to chat: %v\n", err)
 				continue
 			}
 			ap.wsManager.ChatUsers[chatID] = make(map[int]int)
@@ -109,7 +108,7 @@ func (ap *API) disconnectUser(userID int, conn *websocket.Conn) {
 		if ap.wsManager.ChatUsers[chatID][userID] == 1 {
 			if len(ap.wsManager.ChatUsers[chatID]) == 1 {
 				if err := ap.msgsHandlerService.UnsubscribeFromChats(context.Background(), strconv.Itoa(chatID)); err != nil {
-					log.Printf("disconnectUser: failed remove queue from chat: %v\n", err)
+					log.Printf("disconnectUser: failed unsubscribe user from chat: %v\n", err)
 					continue
 				}
 				delete(ap.wsManager.ChatUsers, chatID)

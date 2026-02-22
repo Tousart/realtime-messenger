@@ -7,6 +7,6 @@ import (
 )
 
 type SessionsRepository interface {
-	SessionData(ctx context.Context, sessionID string) (*domain.User, error)
+	SessionIDPayload(ctx context.Context, sessionID string) (*domain.User, error)
 	GenerateSessionID(ctx context.Context, user *domain.User) (string, error)
 }

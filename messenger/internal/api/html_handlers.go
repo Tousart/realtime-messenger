@@ -129,68 +129,38 @@ const mainPageTemplate = `<!DOCTYPE html>
 </html>`
 
 const loginPageTemplate = `<!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Вход - Messenger</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f5f5f5;
-        }
-        .login-container {
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            width: 300px;
-        }
-        h2 {
-            margin-top: 0;
-            color: #333;
-        }
-        input {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        button {
-            width: 100%;
-            padding: 10px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .error {
-            color: red;
-            font-size: 14px;
-            margin: 5px 0;
-        }
-    </style>
+    <title>Вход</title>
 </head>
 <body>
-    <div class="login-container">
-        <h2>Вход в Messenger</h2>
-        <form method="POST" action="/auth/login">
-            <input type="text" name="user_name" placeholder="Имя пользователя" required>
-            <input type="password" name="password" placeholder="Пароль" required>
-            <button type="submit">Войти</button>
-        </form>
-    </div>
+    <h2>Вход</h2>
+    <form id="loginForm">
+        <input type="text" id="username" placeholder="Имя пользователя" required>
+        <input type="password" id="password" placeholder="Пароль" required>
+        <button type="submit">Войти</button>
+    </form>
+    <p>Нет аккаунта? <a href="/auth/register">Зарегистрироваться</a></p>
+
+    <script>
+        document.getElementById('loginForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const res = await fetch('/auth/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    user_name: document.getElementById('username').value,
+                    password: document.getElementById('password').value
+                })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.redirect) window.location.href = data.redirect;
+            } else {
+                alert('Ошибка входа');
+            }
+        };
+    </script>
 </body>
 </html>`
 
