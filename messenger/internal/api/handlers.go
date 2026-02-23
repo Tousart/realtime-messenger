@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"log"
@@ -54,22 +53,33 @@ func (ap *API) messengerWebSocketConnectionHandler(w http.ResponseWriter, r *htt
 	}
 	defer conn.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	errChan := make(chan error)
-
 	ap.connectUser(userPayload.UserID, conn)
 	defer ap.disconnectUser(userPayload.UserID, conn)
 
 	metadata := Metadata{
 		UserID: userPayload.UserID,
 	}
-	go ap.wsRequestHandler(ctx, conn, &metadata, errChan)
 
-	select {
-	case <-ctx.Done():
-	case err := <-errChan:
-		log.Printf("messengerWebSocketConnectionHandler error: %s\n", err.Error())
+	for {
+		_, wsRequest, err := conn.ReadMessage()
+		if err != nil {
+			http.Error(w, "websocket connection closed", http.StatusInternalServerError)
+			return
+		}
+
+		log.Printf("ws request: %s\n", string(wsRequest))
+
+		var req WebSocketRequest
+		if err = json.Unmarshal(wsRequest, &req); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if method, ok := ap.messengerMethods[req.Method]; ok {
+			method(&metadata, &req)
+		} else {
+			log.Printf("process websocket method error: %v\n", domain.ErrMethodNoTAllowed)
+		}
 	}
 }
 

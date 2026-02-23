@@ -28,7 +28,6 @@ func (r *PSQLUsersRepository) RegisterUser(ctx context.Context, user *domain.Use
 	defer tx.Rollback()
 
 	var exists bool
-
 	err = tx.QueryRowContext(ctx, `SELECT 1 FROM users WHERE user_name = $1`, user.UserName).Scan(&exists)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return 0, fmt.Errorf("postgres: RegisterUser: %w", err)

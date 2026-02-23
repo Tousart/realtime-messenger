@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS public.idx_chat_user_user_id;

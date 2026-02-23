@@ -22,11 +22,11 @@ func NewRedisConsumer(msgsHandlerService usecase.MessagesHandlerService, pubsub 
 	}
 }
 
-func (c *RedisConsumer) ConsumeMessages(ctx context.Context) {
+func (c *RedisConsumer) ConsumeMessages(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return nil
 		case msg := <-c.pubsub.Channel():
 			var consumingMessage dto.ConsumingMessage
 			if err := json.Unmarshal([]byte(msg.Payload), &consumingMessage); err != nil {

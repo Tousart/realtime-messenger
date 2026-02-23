@@ -2,52 +2,11 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"strconv"
 
 	"github.com/gorilla/websocket"
-	"github.com/tousart/messenger/internal/domain"
 )
-
-/*
-
-	Обработчик-маршрутизатор методов внутри WebSocket-соединения
-
-*/
-
-// Handle requests that becomes while websocket connection alive
-func (ap *API) wsRequestHandler(ctx context.Context, conn *websocket.Conn, metadata *Metadata, errChan chan<- error) {
-	for {
-		_, wsRequest, err := conn.ReadMessage()
-		if err != nil {
-			select {
-			case <-ctx.Done():
-			case errChan <- err:
-			}
-			return
-		}
-
-		log.Printf("ws request: %s\n", string(wsRequest))
-
-		var req WebSocketRequest
-		if err = json.Unmarshal(wsRequest, &req); err != nil {
-			select {
-			case <-ctx.Done():
-			case errChan <- err:
-			}
-			return
-		}
-
-		if method, ok := ap.messengerMethods[req.Method]; ok {
-			// TODO: пул горутин, которые будут параллельно обрабатывать запросы пользователя
-			// go method(metadata, req)
-			method(metadata, &req)
-		} else {
-			log.Printf("wsRequestHandler error: %v\n", domain.ErrMethodNoTAllowed)
-		}
-	}
-}
 
 /*
 
