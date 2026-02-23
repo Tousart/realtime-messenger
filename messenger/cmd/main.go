@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 
 	"github.com/go-chi/chi/v5"
@@ -19,14 +18,13 @@ import (
 	pkghashpassword "github.com/tousart/messenger/pkg/hashpassword"
 	pkgpostgres "github.com/tousart/messenger/pkg/postgres"
 	pkgredis "github.com/tousart/messenger/pkg/redis"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	sigCtx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	wg := &sync.WaitGroup{}
-
-	// Load config
+	ewg, ctx := errgroup.WithContext(sigCtx)
 	cfg := config.LoadConfig()
 
 	/*
@@ -53,26 +51,20 @@ func main() {
 
 	// websocket manager
 	wsManager := api.NewWebSocketManager()
-
 	// messages handler repository
 	msgsHandlerRepo := redis.NewRedisMessagesHandlerRepository(redisClient.Client(), redisPubsub)
-
 	// messages handler service
 	msgsHandlerService := service.NewMessagesHandlerService(wsManager, msgsHandlerRepo)
-
 	// go consume messages
 	msgsConsumer := infraredis.NewRedisConsumer(msgsHandlerService, redisPubsub)
-	wg.Go(func() {
-		msgsConsumer.ConsumeMessages(ctx)
+	ewg.Go(func() error {
+		return msgsConsumer.ConsumeMessages(ctx)
 	})
-
 	// users repository
 	usersRepo, err := postgres.NewPSQLUsersRepository(psqlDB)
 	if err != nil {
 		log.Fatalf("failed to create publisher repository: %v", err)
 	}
-
-	// Users service - create repositories and users service
 	// to hashing users password
 	pswrdHasher := pkghashpassword.NewBCryptPasswordHasher()
 	// sessions repository
@@ -88,17 +80,23 @@ func main() {
 
 	// api methods router
 	r := chi.NewRouter()
-
 	// create server api
 	srvApi := api.NewAPI(wsManager, msgsHandlerService, usersService)
-	// isProd - boolean flag to local development (false if local else true)
-	isProd := true
+	isProd := true // isProd - boolean flag to local development (false if local else true)
 	srvApi.WithHandlers(r, isProd)
 	srvApi.WithMethods()
-
 	// create and run server
 	srv := server.NewServer(cfg.Server.Addr, r)
-	srv.CreateAndRunServer(ctx, wg)
+	ewg.Go(func() error {
+		return srv.CreateAndRunServer(ctx)
+	})
 
-	wg.Wait()
+	ewg.Go(func() error {
+		return srv.ShutdownServer(ctx)
+	})
+
+	if err := ewg.Wait(); err != nil {
+		log.Printf("main error: %v\n", err)
+		return
+	}
 }

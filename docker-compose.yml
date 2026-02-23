@@ -60,6 +60,9 @@ services:
       - -path=/migrations/
       - -database=postgres://postgres:password@postgresql:5432/messenger_db?sslmode=disable
       - up
+      # - down # откатиться на конкретную версию
+      # - force # обозначить версию БД
+      # - "НОМЕР МИГРАЦИИ"
     depends_on:
       postgresql:
         condition: service_healthy

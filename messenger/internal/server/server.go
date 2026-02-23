@@ -2,11 +2,8 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -31,43 +28,24 @@ func NewServer(addr string, r *chi.Mux) *Server {
 	}
 }
 
-func (s *Server) CreateAndRunServer(ctx context.Context, wg *sync.WaitGroup) {
-	errChan := make(chan error, 1)
-
-	wg.Go(func() {
-		s.runServer(errChan)
-	})
-
-	wg.Go(func() {
-		s.shutdownServer(ctx, errChan)
-	})
-}
-
-func (s *Server) runServer(errChan chan error) {
+func (s *Server) CreateAndRunServer(ctx context.Context) error {
 	log.Printf("server run on %s\n", s.Addr)
-
 	if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Printf("run server error: %s\n", err.Error())
-		errChan <- err
-		return
+		return err
 	}
-
-	log.Printf("server run on %s stopped\n", s.Addr)
+	log.Printf("server on %s stopped\n", s.Addr)
+	return nil
 }
 
-func (s *Server) shutdownServer(ctx context.Context, errChan chan error) {
-	select {
-	case <-ctx.Done():
-	case <-errChan:
-		return
-	}
+func (s *Server) ShutdownServer(ctx context.Context) error {
+	<-ctx.Done()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
 	if err := s.srv.Shutdown(shutdownCtx); err != nil {
-		fmt.Fprintf(os.Stderr, "error shutting down server: %s", err.Error())
+		return err
 	}
-
 	log.Println("server shutting down graceful")
+	return nil
 }
