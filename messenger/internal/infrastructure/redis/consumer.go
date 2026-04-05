@@ -10,7 +10,7 @@ import (
 )
 
 type WebsocketManager interface {
-	SendMessageToUsersConnections(ctx context.Context, msg dto.ConsumingMessage) error
+	SendMessageToUsersConnections(ctx context.Context, msg *dto.Message) error
 }
 
 type Consumer struct {
@@ -31,13 +31,13 @@ func (c *Consumer) ConsumeMessages(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case msg := <-c.pubsub.Channel():
-			var consumingMessage dto.ConsumingMessage
-			if err := json.Unmarshal([]byte(msg.Payload), &consumingMessage); err != nil {
+			var message dto.Message
+			if err := json.Unmarshal([]byte(msg.Payload), &message); err != nil {
 				log.Printf("infrastructure: ConsumeMessages: failed to unmarshal message: %v\n", err)
 				continue
 			}
 
-			if err := c.wsManager.SendMessageToUsersConnections(ctx, consumingMessage); err != nil {
+			if err := c.wsManager.SendMessageToUsersConnections(ctx, &message); err != nil {
 				log.Printf("infrastructure: ConsumeMessages: failed to send message to users connections: %v\n", err)
 				continue
 			}

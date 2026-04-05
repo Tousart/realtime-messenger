@@ -1,44 +1,27 @@
 package domain
 
-import "strings"
+import (
+	"strings"
+	"time"
+)
 
 type User struct {
-	UserID   int
-	UserName string
-	Password string
+	ID        int64
+	Name      string
+	Password  string
+	CreatedAt *time.Time
 }
 
-type UserField func(user *User) error
-
-func NewUser(fields ...UserField) (*User, error) {
-	user := User{}
-	for _, field := range fields {
-		err := field(&user)
-		if err != nil {
-			return nil, err
-		}
+func IsValidUserName(name string) error {
+	if len(name) == 0 || len(strings.TrimSpace(name)) != len(name) {
+		return ErrBadUserName
 	}
-	return &user, nil
+	return nil
 }
 
-func WithUserName(userName string) UserField {
-	return func(user *User) error {
-		name := strings.TrimSpace(userName)
-		if len(name) < 2 || len(name) > 30 {
-			return ErrBadUserName
-		}
-		user.UserName = name
-		return nil
+func IsValidUserPassword(password string) error {
+	if len(password) == 0 || len(strings.TrimSpace(password)) != len(password) {
+		return ErrBadPassword
 	}
-}
-
-func WithPassword(password string) UserField {
-	return func(user *User) error {
-		pswrd := strings.TrimSpace(password)
-		if len(pswrd) < 8 || len(pswrd) > 72 {
-			return ErrBadPassword
-		}
-		user.Password = pswrd
-		return nil
-	}
+	return nil
 }

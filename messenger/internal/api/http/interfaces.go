@@ -8,13 +8,13 @@ import (
 )
 
 type MessagesUsecase interface {
-	UsersChats(ctx context.Context, userID int) ([]dto.Chat, error)
+	UsersChats(ctx context.Context, userID int64) ([]dto.ChatInfo, error)
 }
 
 type UsersUsecase interface {
-	RegisterUser(ctx context.Context, input dto.RegisterUserRequest) (*dto.RegisterUserResponse, error)
-	LoginUser(ctx context.Context, input dto.LoginUserRequest) (*dto.LoginUserResponse, error)
-	ValidateSessionID(ctx context.Context, sessionID string) (*dto.SessionPayload, error)
+	Register(ctx context.Context, input *dto.RegisterRequest) (*dto.User, error)
+	Login(ctx context.Context, input *dto.LoginRequest) (*dto.SessionID, error)
+	ValidateSessionID(ctx context.Context, sessionID string) ([]byte, error)
 }
 
 type WebSocketUpgrader interface {

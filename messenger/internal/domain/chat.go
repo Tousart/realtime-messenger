@@ -1,21 +1,25 @@
 package domain
 
-import "strings"
+import (
+	"strings"
+	"time"
+)
 
 type Chat struct {
-	ID               int
+	ID               int64
 	Name             string
 	ChatParticipants []ChatParticipant
+	CreatedAt        *time.Time
 }
 
 type ChatParticipant struct {
-	UserID   int
-	UserName string
-	Role     int
+	ID   int64
+	Name string
+	Role int
 }
 
 type ChatInfo struct {
-	ID   int
+	ID   int64
 	Name string
 }
 

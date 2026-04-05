@@ -16,9 +16,9 @@ var (
 
 	// USERS ERRORS
 	// username
-	ErrUserExists   error = errors.New("user exists")
-	ErrUserNotFound error = errors.New("user not found")
-	ErrBadUserName  error = errors.New("bad username")
+	ErrUserAlreadyExists error = errors.New("user exists")
+	ErrUserNotFound      error = errors.New("user not found")
+	ErrBadUserName       error = errors.New("bad username")
 	// password
 	ErrBadPassword       error = errors.New("bad password")
 	ErrIncorrectPassword error = errors.New("incorrect password")

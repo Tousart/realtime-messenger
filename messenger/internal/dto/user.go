@@ -1,26 +1,39 @@
 package dto
 
-type RegisterUserRequest struct {
+import "time"
+
+type RegisterRequest struct {
 	UserName string `json:"user_name"`
 	Password string `json:"password"`
 }
 
-type RegisterUserResponse struct {
-	SessionID    string `json:"session_id"`
-	RedirectPath string `json:"redirect"`
+type User struct {
+	ID        int64      `json:"user_id"`
+	Name      string     `json:"user_name"`
+	CreatedAt *time.Time `json:"created_at"`
 }
 
-type LoginUserRequest struct {
+type LoginRequest struct {
 	UserName string `json:"user_name"`
 	Password string `json:"password"`
 }
 
-type LoginUserResponse struct {
-	SessionID    string `json:"session_id"`
-	RedirectPath string `json:"redirect"`
+type SessionID struct {
+	SessionID string `json:"session_id"`
 }
 
 type SessionPayload struct {
-	UserID   int    `json:"user_id"`
+	UserID   int64  `json:"user_id"`
 	UserName string `json:"user_name"`
+}
+
+type ChatInfo struct {
+	ID   int64  `json:"chat_id"`
+	Name string `json:"chat_name"`
+}
+
+type UserPayload struct {
+	ID    int64      `json:"user_id"`
+	Name  string     `json:"user_name"`
+	Chats []ChatInfo `json:"chats"`
 }

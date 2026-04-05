@@ -15,7 +15,7 @@ type errorStatus struct {
 var errorToMessage = map[error]errorStatus{
 	// Ошибки пользователя (400-404)
 	domain.ErrUserNotFound:      {"user not found", http.StatusNotFound},
-	domain.ErrUserExists:        {"user with this name already exists", http.StatusBadRequest},
+	domain.ErrUserAlreadyExists: {"user with this name already exists", http.StatusBadRequest},
 	domain.ErrBadUserName:       {"invalid username format", http.StatusBadRequest},
 	domain.ErrBadPassword:       {"password does not meet requirements", http.StatusBadRequest},
 	domain.ErrIncorrectPassword: {"invalid password", http.StatusBadRequest},

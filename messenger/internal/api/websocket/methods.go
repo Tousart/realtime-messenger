@@ -13,20 +13,22 @@ import (
 )
 
 func (ws *WebSocketManager) SendMessage(metadata *Metadata, conn *websocket.Conn, req *WebSocketRequest) {
-	var message dto.SendMessageRequest
-	if err := json.Unmarshal(req.Payload, &message); err != nil {
+	var sentMsg dto.SendMessageRequest
+	err := json.Unmarshal(req.Payload, &sentMsg)
+	if err != nil {
 		ws.SendError(conn, domain.ErrInvalidRequest)
 		return
 	}
 
-	message.UserID = metadata.userID
+	sentMsg.SenderID = metadata.userID
 
-	if err := ws.messagesUC.PublishMessageToChat(metadata.ctx, &message); err != nil {
+	message, err := ws.messagesUC.SendMessage(metadata.ctx, &sentMsg)
+	if err != nil {
 		ws.SendError(conn, err)
 		return
 	}
 
-	ws.SendResponse(conn, http.StatusOK, nil)
+	ws.SendResponse(conn, http.StatusCreated, message)
 }
 
 func (ws *WebSocketManager) JoinToChat(metadata *Metadata, conn *websocket.Conn, req *WebSocketRequest) {

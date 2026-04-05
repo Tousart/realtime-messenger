@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 
 	"github.com/tousart/messenger/internal/api/helpers"
@@ -25,7 +24,7 @@ func (ap *API) messengerWebSocketConnectionHandler(w http.ResponseWriter, r *htt
 		return
 	}
 
-	sessionPayload, err := ap.usersUC.ValidateSessionID(r.Context(), cookie.Value)
+	sessionPayloadBytes, err := ap.usersUC.ValidateSessionID(r.Context(), cookie.Value)
 	if err != nil {
 		if errors.Is(err, domain.ErrSessionIDNotExists) {
 			ap.renderError(w, err)
@@ -34,8 +33,13 @@ func (ap *API) messengerWebSocketConnectionHandler(w http.ResponseWriter, r *htt
 		ap.renderError(w, err)
 		return
 	}
+	var sessionPayload dto.SessionPayload
+	if err = json.Unmarshal(sessionPayloadBytes, &sessionPayload); err != nil {
+		ap.renderError(w, err)
+		return
+	}
 
-	chats, err := ap.messagesUC.UsersChats(r.Context(), sessionPayload.UserID)
+	chats, err := ap.msgsUC.UsersChats(r.Context(), sessionPayload.UserID)
 	if err != nil {
 		ap.renderError(w, err)
 		return
@@ -60,76 +64,44 @@ func (ap *API) messengerWebSocketConnectionHandler(w http.ResponseWriter, r *htt
 */
 
 func (ap *API) registerHandler(w http.ResponseWriter, r *http.Request) {
-	var req dto.RegisterUserRequest
+	var req dto.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apirender.Error(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 	defer r.Body.Close()
 
-	response, err := ap.usersUC.RegisterUser(r.Context(), req)
+	user, err := ap.usersUC.Register(r.Context(), &req)
 	if err != nil {
-		if errors.Is(err, domain.ErrUserExists) {
-			http.Error(w, "user exists", http.StatusBadRequest)
-			return
-		}
-		log.Printf("register error: %v\n", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		ap.renderError(w, err)
 		return
 	}
-	response.RedirectPath = "/"
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     domain.CookieSessionID,
-		Value:    response.SessionID,
-		Path:     "/",
-		HttpOnly: true,
-	})
-
-	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("register error: %v\n", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
+	apirender.JSON(w, http.StatusCreated, user)
 }
 
 func (ap *API) loginHandler(w http.ResponseWriter, r *http.Request) {
-	var req dto.LoginUserRequest
+	var req dto.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apirender.Error(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 	defer r.Body.Close()
 
-	response, err := ap.usersUC.LoginUser(r.Context(), req)
+	sessionID, err := ap.usersUC.Login(r.Context(), &req)
 	if err != nil {
-		if errors.Is(err, domain.ErrUserNotFound) {
-			http.Error(w, "user not found", http.StatusNotFound)
-			return
-		} else if errors.Is(err, domain.ErrIncorrectPassword) {
-			http.Error(w, "incorrect password", http.StatusBadRequest)
-			return
-		}
-		log.Printf("login error: %v\n", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		ap.renderError(w, err)
 		return
 	}
-	response.RedirectPath = "/"
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     domain.CookieSessionID,
-		Value:    response.SessionID,
+		Value:    sessionID.SessionID,
 		Path:     "/",
 		HttpOnly: true,
 	})
 
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("login error: %v\n", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
+	apirender.JSON(w, http.StatusOK, sessionID)
 }
 
 /*

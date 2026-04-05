@@ -28,7 +28,7 @@ type API struct {
 	wsUpgrader WebSocketUpgrader
 
 	// messages usecase
-	messagesUC MessagesUsecase
+	msgsUC MessagesUsecase
 
 	// processing users data
 	usersUC UsersUsecase
@@ -37,10 +37,10 @@ type API struct {
 	logger *slog.Logger
 }
 
-func NewAPI(wsUpgrader WebSocketUpgrader, messagesUC MessagesUsecase, usersUC UsersUsecase, logger *slog.Logger) *API {
+func NewAPI(wsUpgrader WebSocketUpgrader, msgsUC MessagesUsecase, usersUC UsersUsecase, logger *slog.Logger) *API {
 	return &API{
 		wsUpgrader: wsUpgrader,
-		messagesUC: messagesUC,
+		msgsUC:     msgsUC,
 		usersUC:    usersUC,
 		logger:     logger,
 	}

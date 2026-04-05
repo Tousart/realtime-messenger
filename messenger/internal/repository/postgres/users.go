@@ -5,74 +5,62 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
+	"github.com/lib/pq"
 	"github.com/tousart/messenger/internal/domain"
 )
 
-type PSQLUsersRepository struct {
+type UsersRepository struct {
 	db *sql.DB
 }
 
-func NewPSQLUsersRepository(db *sql.DB) (*PSQLUsersRepository, error) {
-	return &PSQLUsersRepository{
+func NewUsersRepository(db *sql.DB) (*UsersRepository, error) {
+	return &UsersRepository{
 		db: db,
 	}, nil
 }
 
-func (r *PSQLUsersRepository) RegisterUser(ctx context.Context, user *domain.User) (int, error) {
+func (r *UsersRepository) Create(ctx context.Context, user *domain.User) error {
+	const op = "repository: postgres: Create:"
+
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return 0, fmt.Errorf("postgres: RegisterUser: %w", err)
+		return fmt.Errorf("%s %w", op, err)
 	}
 	defer tx.Rollback()
 
-	var exists bool
-	err = tx.QueryRowContext(ctx, `SELECT 1 FROM users WHERE user_name = $1`, user.UserName).Scan(&exists)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return 0, fmt.Errorf("postgres: RegisterUser: %w", err)
-	}
-	if exists {
-		return 0, fmt.Errorf("postgres: RegisterUser: %w", domain.ErrUserExists)
-	}
-
-	_, err = tx.ExecContext(ctx, `INSERT INTO users (user_name, password, created_at, updated_at) VALUES ($1, $2, $3, $4)`, user.UserName, user.Password, time.Now(), time.Now())
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO users (user_id, user_name, password, created_at) VALUES ($1, $2, $3, $4)`,
+		user.ID, user.Name, user.Password, user.CreatedAt,
+	)
 	if err != nil {
-		return 0, fmt.Errorf("postgres: RegisterUser: %w", err)
-	}
-
-	var userID int
-	if err := tx.QueryRowContext(ctx, `SELECT user_id FROM users WHERE user_name = $1`, user.UserName).Scan(&userID); err != nil {
-		return 0, fmt.Errorf("postgres: RegisterUser: %w", err)
+		var pgErr *pq.Error
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return fmt.Errorf("%s %w", op, domain.ErrUserAlreadyExists)
+		}
+		return fmt.Errorf("%s %w", op, err)
 	}
 
 	if err = tx.Commit(); err != nil {
-		return 0, fmt.Errorf("postgres: RegisterUser: %w", err)
+		return fmt.Errorf("%s %w", op, err)
 	}
-	return userID, nil
+	return nil
 }
 
-func (r *PSQLUsersRepository) User(ctx context.Context, userName string) (*domain.User, error) {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("postgres: User: %w", err)
-	}
-	defer tx.Rollback()
+func (r *UsersRepository) User(ctx context.Context, name string) (*domain.User, error) {
+	const op = "repository: postgres: User:"
 
-	user, err := domain.NewUser(domain.WithUserName(userName))
+	var user domain.User
+	err := r.db.QueryRowContext(ctx,
+		`SELECT user_id, user_name, password, created_at FROM users WHERE user_name = $1`,
+		name,
+	).Scan(&user.ID, &user.Name, &user.Password, &user.CreatedAt)
 	if err != nil {
-		return nil, fmt.Errorf("postgres: User: %w", err)
-	}
-
-	if err := tx.QueryRowContext(ctx, `SELECT user_id, password FROM users WHERE user_name = $1`, userName).Scan(&user.UserID, &user.Password); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("postgres: User: %w", domain.ErrUserNotFound)
+			return nil, fmt.Errorf("%s %w", op, domain.ErrUserNotFound)
 		}
-		return nil, fmt.Errorf("postgres: User: %w", err)
+		return nil, fmt.Errorf("%s %w", op, err)
 	}
 
-	if err = tx.Commit(); err != nil {
-		return nil, fmt.Errorf("postgres: User: %w", err)
-	}
-	return user, nil
+	return &user, nil
 }

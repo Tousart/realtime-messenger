@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -30,7 +29,7 @@ type WebSocketRequest struct {
 
 type Metadata struct {
 	ctx    context.Context
-	userID int
+	userID int64
 }
 
 type WSMethod func(metadata *Metadata, conn *websocket.Conn, req *WebSocketRequest)
@@ -39,13 +38,13 @@ type WebSocketManager struct {
 	messagesUC MessagesUsecase
 
 	// // control reflection user an his current connection
-	UserConnections map[int][]*websocket.Conn
+	UserConnections map[int64][]*websocket.Conn
 
 	// control reflections chat-user
-	ChatUsers map[int]map[int]int
+	ChatUsers map[int64]map[int64]int
 
 	// control reflection user an his current chat
-	UserChat map[int]int
+	UserChat map[int64]int64
 
 	// for isolated access to maps
 	mu *sync.RWMutex
@@ -60,9 +59,9 @@ type WebSocketManager struct {
 func NewWebSocketManager(messagesUC MessagesUsecase, logger *slog.Logger) *WebSocketManager {
 	return &WebSocketManager{
 		messagesUC:      messagesUC,
-		UserConnections: make(map[int][]*websocket.Conn),
-		ChatUsers:       make(map[int]map[int]int),
-		UserChat:        make(map[int]int),
+		UserConnections: make(map[int64][]*websocket.Conn),
+		ChatUsers:       make(map[int64]map[int64]int),
+		UserChat:        make(map[int64]int64),
 		mu:              &sync.RWMutex{},
 		logger:          logger,
 	}
@@ -75,14 +74,6 @@ func (ws *WebSocketManager) WithMethods() {
 		// "leave": methods.MessengerMethod(LeaveChat),
 	}
 }
-
-// type Client struct {
-// 	conn     *websocket.Conn
-// 	send     chan []byte
-// 	metadata *Metadata
-// 	ctx      context.Context
-// 	cancel   context.CancelFunc
-// }
 
 func (ws *WebSocketManager) UpgradeConnectionForUser(w http.ResponseWriter, r *http.Request, responseHeader http.Header, payload *dto.UserPayload) error {
 	const op = "websocket: UpgradeConnectionForUser:"
@@ -127,12 +118,9 @@ func (ws *WebSocketManager) UpgradeConnectionForUser(w http.ResponseWriter, r *h
 	return err
 }
 
-func (ws *WebSocketManager) SendMessageToUsersConnections(ctx context.Context, message dto.ConsumingMessage) error {
-	// TODO: отправка сообщения в БД
-
+func (ws *WebSocketManager) SendMessageToUsersConnections(ctx context.Context, message *dto.Message) error {
 	ws.mu.RLock()
 	defer ws.mu.RUnlock()
-
 	for userID := range ws.ChatUsers[message.ChatID] {
 		for _, conn := range ws.UserConnections[userID] {
 			if err := conn.WriteMessage(1, []byte(message.Text)); err != nil {
@@ -160,11 +148,11 @@ func (ws *WebSocketManager) connectUser(ctx context.Context, conn *websocket.Con
 	// chatID - user
 	for _, chat := range payload.Chats {
 		if _, ok := ws.ChatUsers[chat.ID]; !ok {
-			if err := ws.messagesUC.SubscribeToChats(ctx, strconv.Itoa(chat.ID)); err != nil {
+			if err := ws.messagesUC.SubscribeToChats(ctx, chat.ID); err != nil {
 				ws.logger.Info("connectUser: failed subscribe user to chat:", "err", err)
 				continue
 			}
-			ws.ChatUsers[chat.ID] = make(map[int]int)
+			ws.ChatUsers[chat.ID] = make(map[int64]int)
 		}
 		ws.ChatUsers[chat.ID][payload.ID]++
 	}
@@ -194,7 +182,7 @@ func (ws *WebSocketManager) disconnectUser(ctx context.Context, conn *websocket.
 		if ws.ChatUsers[chat.ID][payload.ID] == 1 {
 			delete(ws.ChatUsers[chat.ID], payload.ID)
 			if len(ws.ChatUsers[chat.ID]) == 1 {
-				if err := ws.messagesUC.UnsubscribeFromChats(ctx, strconv.Itoa(chat.ID)); err != nil {
+				if err := ws.messagesUC.UnsubscribeFromChats(ctx, chat.ID); err != nil {
 					ws.logger.Info("disconnectUser: failed unsubscribe user from chat:", "err", err)
 					continue
 				}

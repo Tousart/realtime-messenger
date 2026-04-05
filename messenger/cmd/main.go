@@ -16,6 +16,7 @@ import (
 	"github.com/tousart/messenger/internal/repository/redis"
 	"github.com/tousart/messenger/internal/server"
 	"github.com/tousart/messenger/internal/usecase"
+	pkggen "github.com/tousart/messenger/pkg/generator"
 	pkghashpassword "github.com/tousart/messenger/pkg/hashpassword"
 	pkglogger "github.com/tousart/messenger/pkg/logger"
 	pkgpostgres "github.com/tousart/messenger/pkg/postgres"
@@ -56,21 +57,23 @@ func main() {
 
 	*/
 	// to hashing users password
-	pswrdHasher := pkghashpassword.NewBCryptPasswordHasher()
+	passwordHasher := pkghashpassword.NewBCryptPasswordHasher()
+	// id generator
+	idGen := pkggen.NewGenerator()
 	// repository
-	messagesRepo := redis.NewRedisMessagesHandlerRepository(redisClient.Client(), redisPubsub)
-	sessionsRepo := redis.NewRedisSessionsRepository(redisClient.Client())
-	usersRepo, err := postgres.NewPSQLUsersRepository(db)
+	chatPub := redis.NewChatPublisher(redisClient.Client(), redisPubsub)
+	sessionsRepo := redis.NewSessionsRepository(redisClient.Client())
+	usersRepo, err := postgres.NewUsersRepository(db)
 	if err != nil {
 		log.Fatalf("failed to create publisher repository: %v", err)
 	}
-	chatsRepo := postgres.NewChatsRepository(db)
+	msgsRepo := postgres.NewMessagesRepository(db)
 
 	// messages handler service
-	messagesUC := usecase.NewMessagesUsecase(messagesRepo, chatsRepo)
+	msgsUC := usecase.NewMessagesUsecase(msgsRepo, chatPub, idGen)
 
 	// users service
-	usersService := usecase.NewUsersService(usersRepo, sessionsRepo, pswrdHasher)
+	usersService := usecase.NewUsersService(usersRepo, sessionsRepo, passwordHasher, idGen)
 
 	/*
 
@@ -79,7 +82,7 @@ func main() {
 	*/
 
 	// websocket manager
-	wsManager := wsapi.NewWebSocketManager(messagesUC, logger)
+	wsManager := wsapi.NewWebSocketManager(msgsUC, logger)
 
 	// go consume messages
 	msgsConsumer := infraredis.NewRedisConsumer(wsManager, redisPubsub)
@@ -90,7 +93,7 @@ func main() {
 	// api methods router
 	r := chi.NewRouter()
 	// create server api
-	srvApi := httpapi.NewAPI(wsManager, messagesUC, usersService, logger)
+	srvApi := httpapi.NewAPI(wsManager, msgsUC, usersService, logger)
 	isProd := true // isProd - boolean flag to local development (false if local else true)
 	srvApi.WithHandlers(r, isProd)
 	// create and run server
