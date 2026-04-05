@@ -14,7 +14,7 @@ type MessagesUsecase interface {
 type UsersUsecase interface {
 	Register(ctx context.Context, input *dto.RegisterRequest) (*dto.User, error)
 	Login(ctx context.Context, input *dto.LoginRequest) (*dto.SessionID, error)
-	ValidateSessionID(ctx context.Context, sessionID string) ([]byte, error)
+	ValidateSessionID(ctx context.Context, sessionID string) (*dto.SessionPayload, error)
 }
 
 type WebSocketUpgrader interface {

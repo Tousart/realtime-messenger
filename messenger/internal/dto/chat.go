@@ -2,7 +2,6 @@ package dto
 
 import "time"
 
-// CreateChat
 type CreateChatRequest struct {
 	ChatName         string            `json:"chat_name"`
 	CreratorID       int64             `json:"creator_id"`

@@ -29,14 +29,14 @@ func Authorization(validator Validator) func(http.Handler) http.Handler {
 				return
 			}
 
-			userPayload, err := validator.ValidateSessionID(r.Context(), cookie.Value)
+			sessionPayload, err := validator.ValidateSessionID(r.Context(), cookie.Value)
 			if err != nil {
 				http.Redirect(w, r, "/auth/login", http.StatusFound)
 				log.Printf("authorization error: validate session id: %v\n", err)
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), ContextKeyAuthMetadata, userPayload)
+			ctx := context.WithValue(r.Context(), ContextKeyAuthMetadata, sessionPayload)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
