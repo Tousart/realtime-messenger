@@ -6,87 +6,57 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/websocket"
+	"github.com/tousart/messenger/internal/api/helpers"
 	"github.com/tousart/messenger/internal/domain"
 	"github.com/tousart/messenger/internal/dto"
+	"github.com/tousart/messenger/pkg/apirender"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return r.Header.Get("Origin") == "http://localhost:8080"
-	},
-}
-
 /*
-
-	Обработчик улучшения соединения до WebSocket
-
+	──────────────────────────────────────────────────────────────
+	Websocket handler
+	──────────────────────────────────────────────────────────────
 */
 
 func (ap *API) messengerWebSocketConnectionHandler(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie(domain.CookieSessionID)
 	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apirender.Error(w, http.StatusUnauthorized, domain.ErrUnauthorized.Error())
 		return
 	}
 
-	userPayload, err := ap.usersService.ValidateSessionID(r.Context(), cookie.Value)
+	sessionPayload, err := ap.usersUC.ValidateSessionID(r.Context(), cookie.Value)
 	if err != nil {
 		if errors.Is(err, domain.ErrSessionIDNotExists) {
-			http.Error(w, "session id not exists", http.StatusUnauthorized)
+			ap.renderError(w, err)
 			return
 		}
-
-		log.Printf("authorization error: validate session id: %v\n", err)
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		ap.renderError(w, err)
 		return
 	}
 
-	// upgrade connection to websocket
-	conn, err := upgrader.Upgrade(w, r, nil)
+	chats, err := ap.messagesUC.UsersChats(r.Context(), sessionPayload.UserID)
 	if err != nil {
-		log.Printf("messengerWebSocketConnectionHandler error: %v\n", err)
-		http.Error(w, "websocket connection failed", http.StatusInternalServerError)
+		ap.renderError(w, err)
 		return
 	}
-	defer conn.Close()
 
-	ap.connectUser(userPayload.UserID, conn)
-	defer ap.disconnectUser(userPayload.UserID, conn)
-
-	metadata := Metadata{
-		UserID: userPayload.UserID,
+	userPayload := &dto.UserPayload{
+		ID:    sessionPayload.UserID,
+		Name:  sessionPayload.UserName,
+		Chats: chats,
 	}
 
-	for {
-		_, wsRequest, err := conn.ReadMessage()
-		if err != nil {
-			http.Error(w, "websocket connection closed", http.StatusInternalServerError)
-			return
-		}
-
-		log.Printf("ws request: %s\n", string(wsRequest))
-
-		var req WebSocketRequest
-		if err = json.Unmarshal(wsRequest, &req); err != nil {
-			http.Error(w, "invalid request body", http.StatusBadRequest)
-			return
-		}
-
-		if method, ok := ap.messengerMethods[req.Method]; ok {
-			method(&metadata, &req)
-		} else {
-			log.Printf("process websocket method error: %v\n", domain.ErrMethodNoTAllowed)
-		}
+	if err = ap.wsUpgrader.UpgradeConnectionForUser(w, r, nil, userPayload); err != nil {
+		ap.renderError(w, err)
+		return
 	}
 }
 
 /*
-
-	Обработчик регистрации пользователя
-
+	──────────────────────────────────────────────────────────────
+	Авторизация
+	──────────────────────────────────────────────────────────────
 */
 
 func (ap *API) registerHandler(w http.ResponseWriter, r *http.Request) {
@@ -97,7 +67,7 @@ func (ap *API) registerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	response, err := ap.usersService.RegisterUser(r.Context(), req)
+	response, err := ap.usersUC.RegisterUser(r.Context(), req)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserExists) {
 			http.Error(w, "user exists", http.StatusBadRequest)
@@ -124,12 +94,6 @@ func (ap *API) registerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-/*
-
-	Обработчик аутентификации пользователя
-
-*/
-
 func (ap *API) loginHandler(w http.ResponseWriter, r *http.Request) {
 	var req dto.LoginUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -138,7 +102,7 @@ func (ap *API) loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	response, err := ap.usersService.LoginUser(r.Context(), req)
+	response, err := ap.usersUC.LoginUser(r.Context(), req)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
 			http.Error(w, "user not found", http.StatusNotFound)
@@ -166,4 +130,20 @@ func (ap *API) loginHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
+}
+
+/*
+	──────────────────────────────────────────────────────────────
+	Вспомогательные функции
+	──────────────────────────────────────────────────────────────
+*/
+
+func (ap *API) renderError(w http.ResponseWriter, err error) {
+	msg, status := helpers.MapError(err)
+	if status == http.StatusInternalServerError {
+		ap.logger.Error(err.Error())
+	} else {
+		ap.logger.Info(err.Error())
+	}
+	apirender.Error(w, status, msg)
 }

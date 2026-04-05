@@ -6,11 +6,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type PasswordHasher interface {
-	Hash(password string) (string, error)
-	Compare(hashedPassword, password string) bool
-}
-
 type BCryptPasswordHasher struct{}
 
 func NewBCryptPasswordHasher() *BCryptPasswordHasher {

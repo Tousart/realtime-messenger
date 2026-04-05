@@ -1,8 +1,4 @@
-package api
-
-import "net/http"
-
-const mainPageTemplate = `<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -23,7 +19,7 @@ const mainPageTemplate = `<!DOCTYPE html>
         <button onclick="selectChat(2)">Чат 2</button>
         <button onclick="selectChat(3)">Чат 3</button>
     </div>
-    
+
     <div id="chat" style="display:none;">
         <h2 id="chatTitle">Чат</h2>
         <div id="messages"></div>
@@ -33,143 +29,99 @@ const mainPageTemplate = `<!DOCTYPE html>
             <button onclick="showHome()">← Назад</button>
         </div>
     </div>
-    
+
     <script>
+        const BACKEND_URL = 'http://localhost:8080';
+        const WS_URL = 'ws://localhost:8080';
+
         let ws = null;
         let currentChatId = null;
-        let wasConnected = false; // флаг успешного открытия соединения
-        
+        let wasConnected = false;
+
         function initWebSocket() {
-            ws = new WebSocket('ws://' + window.location.host + '/messenger');
-            
-            ws.onopen = function() {
+            ws = new WebSocket(WS_URL + '/messenger');
+
+            ws.onopen = function () {
                 console.log('WebSocket connected');
                 wasConnected = true;
             };
-            
-            ws.onmessage = function(e) {
+
+            ws.onmessage = function (e) {
                 console.log('Received:', e.data);
                 addMessage('Сервер', e.data);
             };
-            
-            ws.onclose = function(event) {
+
+            ws.onclose = function (event) {
                 console.log('WebSocket disconnected', event);
-                // Если соединение так и не открылось (нет сессии), редирект на логин
                 if (!wasConnected) {
-                    window.location.href = '/auth/login';
+                    window.location.href = '/login';
                 }
             };
-            
-            ws.onerror = function(error) {
+
+            ws.onerror = function (error) {
                 console.error('WebSocket error:', error);
             };
         }
-        
+
         function selectChat(chatId) {
             currentChatId = chatId;
-            
+
             document.getElementById('home').style.display = 'none';
             document.getElementById('chat').style.display = 'block';
             document.getElementById('chatTitle').textContent = 'Чат ' + chatId;
             document.getElementById('messages').innerHTML = '';
-            
+
             ws.send(JSON.stringify({
-                method: "join",
+                method: 'join',
                 payload: { chat_id: chatId }
             }));
-            
+
             document.getElementById('chatInput').focus();
         }
-        
+
         function showHome() {
             currentChatId = null;
             document.getElementById('chat').style.display = 'none';
             document.getElementById('home').style.display = 'block';
         }
-        
+
         function sendMessage() {
             if (!currentChatId) return;
-            
+
             const input = document.getElementById('chatInput');
             const text = input.value.trim();
-            
+
             if (!text) return;
-            
+
             ws.send(JSON.stringify({
-                method: "send",
+                method: 'send',
                 payload: {
                     chat_id: currentChatId,
                     text: text
                 }
             }));
-            
+
             addMessage('Вы', text);
             input.value = '';
             input.focus();
         }
-        
+
         function addMessage(sender, text) {
             const messagesDiv = document.getElementById('messages');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
-            messageDiv.innerHTML = '<strong>' + sender + ':</strong> ' + text;
+            messageDiv.textContent = sender + ': ' + text;
             messagesDiv.appendChild(messageDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
-        
-        document.addEventListener('DOMContentLoaded', function() {
+
+        document.addEventListener('DOMContentLoaded', function () {
             initWebSocket();
-            
-            document.getElementById('chatInput').addEventListener('keypress', function(e) {
+
+            document.getElementById('chatInput').addEventListener('keypress', function (e) {
                 if (e.key === 'Enter') sendMessage();
             });
         });
     </script>
 </body>
-</html>`
-
-const loginPageTemplate = `<!DOCTYPE html>
-<html>
-<head>
-    <title>Вход</title>
-</head>
-<body>
-    <h2>Вход</h2>
-    <form id="loginForm">
-        <input type="text" id="username" placeholder="Имя пользователя" required>
-        <input type="password" id="password" placeholder="Пароль" required>
-        <button type="submit">Войти</button>
-    </form>
-    <p>Нет аккаунта? <a href="/auth/register">Зарегистрироваться</a></p>
-
-    <script>
-        document.getElementById('loginForm').onsubmit = async (e) => {
-            e.preventDefault();
-            const res = await fetch('/auth/login', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    user_name: document.getElementById('username').value,
-                    password: document.getElementById('password').value
-                })
-            });
-            if (res.ok) {
-                const data = await res.json();
-                if (data.redirect) window.location.href = data.redirect;
-            } else {
-                alert('Ошибка входа');
-            }
-        };
-    </script>
-</body>
-</html>`
-
-func (ap *API) getHomePageHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(mainPageTemplate))
-}
-
-func (ap *API) getLoginPageHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(loginPageTemplate))
-}
+</html>

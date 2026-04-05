@@ -20,7 +20,7 @@ type LoginUserResponse struct {
 	RedirectPath string `json:"redirect"`
 }
 
-type UserPayload struct {
+type SessionPayload struct {
 	UserID   int    `json:"user_id"`
 	UserName string `json:"user_name"`
 }
