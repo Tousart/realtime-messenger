@@ -17,6 +17,16 @@ services:
     networks:
      - realtime
 
+  frontend:
+    container_name: frontend
+    build:
+      context: ./frontend
+      dockerfile: ./Dockerfile
+    ports:
+      - "3000:3000"
+    networks:
+      - realtime
+
   redis:
     image: redis:8.4-alpine
     container_name: redis
@@ -62,7 +72,7 @@ services:
       - up
       # - down # откатиться на конкретную версию
       # - force # обозначить версию БД
-      # - "НОМЕР МИГРАЦИИ"
+      # - "1"
     depends_on:
       postgresql:
         condition: service_healthy

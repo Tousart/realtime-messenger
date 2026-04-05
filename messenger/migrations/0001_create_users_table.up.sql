@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS public.users (
-    user_id bigserial NOT NULL,
+    user_id bigint NOT NULL,
     user_name character varying(40) NOT NULL,
     password character varying(72) NOT NULL,
     created_at timestamp with time zone,

@@ -2,7 +2,6 @@ package redis
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -16,41 +15,34 @@ const (
 	SessionExpirationHours = 6
 )
 
-type RedisSessionsRepository struct {
+type SessionsRepository struct {
 	client *rdb.Client
 }
 
-func NewRedisSessionsRepository(client *rdb.Client) *RedisSessionsRepository {
-	return &RedisSessionsRepository{
+func NewSessionsRepository(client *rdb.Client) *SessionsRepository {
+	return &SessionsRepository{
 		client: client,
 	}
 }
 
-func (r *RedisSessionsRepository) SessionIDPayload(ctx context.Context, sessionID string) (*domain.User, error) {
-	payloadBytes, err := r.client.Get(ctx, sessionID).Bytes()
+func (r *SessionsRepository) Payload(ctx context.Context, sessionID string) ([]byte, error) {
+	const op = "repository: redis: Payload:"
+
+	payload, err := r.client.Get(ctx, sessionID).Bytes()
 	if err != nil {
-		if payloadBytes == nil {
-			return nil, fmt.Errorf("redis: SessionIDPayload: %w", domain.ErrSessionIDNotExists)
+		if payload == nil {
+			return nil, fmt.Errorf("%s %w", op, domain.ErrSessionIDNotExists)
 		}
-		return nil, fmt.Errorf("redis: SessionIDPayload: %w", err)
+		return nil, fmt.Errorf("%s %w", op, err)
 	}
 
-	var user domain.User
-	if err := json.Unmarshal(payloadBytes, &user); err != nil {
-		return nil, fmt.Errorf("redis: SessionIDPayload: %w", err)
-	}
-	return &user, nil
+	return payload, nil
 }
 
-func (r *RedisSessionsRepository) GenerateSessionID(ctx context.Context, user *domain.User) (string, error) {
+func (r *SessionsRepository) GenerateSessionID(ctx context.Context, payload []byte) (string, error) {
 	sessionID := uuid.New().String()
-	data, err := json.Marshal(user)
-	if err != nil {
-		return "", fmt.Errorf("redis: GenerateSessionID: %w", err)
-	}
-
-	if err := r.client.Set(ctx, sessionID, data, SessionExpirationHours*time.Hour).Err(); err != nil {
-		return "", fmt.Errorf("redis: GenerateSessionID: %w", err)
+	if err := r.client.Set(ctx, sessionID, payload, SessionExpirationHours*time.Hour).Err(); err != nil {
+		return "", fmt.Errorf("repository: redis: GenerateSessionID: %w", err)
 	}
 	return sessionID, nil
 }

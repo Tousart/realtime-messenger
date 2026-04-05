@@ -1,25 +1,31 @@
 package domain
 
+import (
+	"strings"
+	"time"
+)
+
 type Chat struct {
-	ChatID int
+	ID               int64
+	Name             string
+	ChatParticipants []ChatParticipant
+	CreatedAt        *time.Time
 }
 
-type ChatField func(chat *Chat) error
-
-func NewChat(fields ...ChatField) (*Chat, error) {
-	chat := Chat{}
-	for _, field := range fields {
-		err := field(&chat)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return &chat, nil
+type ChatParticipant struct {
+	ID   int64
+	Name string
+	Role int
 }
 
-func WithChatChatID(chatID int) ChatField {
-	return func(chat *Chat) error {
-		chat.ChatID = chatID
-		return nil
+type ChatInfo struct {
+	ID   int64
+	Name string
+}
+
+func ValidateChatName(name string) error {
+	if strings.TrimSpace(name) == "" {
+		return ErrInvalidRequest
 	}
+	return nil
 }
