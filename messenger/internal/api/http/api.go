@@ -4,6 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/tousart/messenger/internal/middleware"
 )
 
 // func corsMiddleware(next http.Handler) http.Handler {
@@ -54,13 +55,9 @@ func (ap *API) WithHandlers(r *chi.Mux, isProd bool) {
 		r.Post("/login", ap.loginHandler)
 	})
 
-	// method to upgrade connection to websocket
-	r.Get("/messenger", ap.messengerWebSocketConnectionHandler)
-
-	// service handlers
-	// r.Group(func(r chi.Router) {
-	// 	if isProd {
-	// 		r.Use(middleware.Authorization(ap.usersService))
-	// 	}
-	// })
+	// method to upgrade connection to websocket — requires authorization
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.Authorization(ap.usersUC))
+		r.Get("/messenger", ap.messengerWebSocketConnectionHandler)
+	})
 }

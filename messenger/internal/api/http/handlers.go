@@ -2,12 +2,12 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	"github.com/tousart/messenger/internal/api/helpers"
 	"github.com/tousart/messenger/internal/domain"
 	"github.com/tousart/messenger/internal/dto"
+	"github.com/tousart/messenger/internal/middleware"
 	"github.com/tousart/messenger/pkg/apirender"
 )
 
@@ -18,24 +18,9 @@ import (
 */
 
 func (ap *API) messengerWebSocketConnectionHandler(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie(domain.CookieSessionID)
-	if err != nil {
-		apirender.Error(w, http.StatusUnauthorized, domain.ErrUnauthorized.Error())
-		return
-	}
-
-	sessionPayloadBytes, err := ap.usersUC.ValidateSessionID(r.Context(), cookie.Value)
-	if err != nil {
-		if errors.Is(err, domain.ErrSessionIDNotExists) {
-			ap.renderError(w, err)
-			return
-		}
-		ap.renderError(w, err)
-		return
-	}
-	var sessionPayload dto.SessionPayload
-	if err = json.Unmarshal(sessionPayloadBytes, &sessionPayload); err != nil {
-		ap.renderError(w, err)
+	sessionPayload, ok := r.Context().Value(middleware.ContextKeyAuthMetadata).(*dto.SessionPayload)
+	if !ok || sessionPayload == nil {
+		apirender.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 

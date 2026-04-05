@@ -95,10 +95,20 @@ func (uc *UsersUsecase) Login(ctx context.Context, input *dto.LoginRequest) (*dt
 	}, nil
 }
 
-func (uc *UsersUsecase) ValidateSessionID(ctx context.Context, sessionID string) ([]byte, error) {
-	payload, err := uc.sessionsRepo.Payload(ctx, sessionID)
+func (uc *UsersUsecase) ValidateSessionID(ctx context.Context, sessionID string) (*dto.SessionPayload, error) {
+	const op = "usecase: ValidateSessionID:"
+
+	payloadBytes, err := uc.sessionsRepo.Payload(ctx, sessionID)
 	if err != nil {
-		return nil, fmt.Errorf("service: ValidateSessionID: %w", err)
+		return nil, fmt.Errorf("%s %w", op, err)
 	}
-	return payload, nil
+
+	// костыль
+	var payload dto.SessionPayload
+	if err = json.Unmarshal(payloadBytes, &payload); err != nil {
+		return nil, fmt.Errorf("%s %w", op, err)
+	}
+	// костыль
+
+	return &payload, nil
 }
