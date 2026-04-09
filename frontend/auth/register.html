@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login</title>
+  <title>Register</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -68,23 +68,19 @@
 </head>
 <body>
 <div class="card">
-  <h1>Sign in</h1>
+  <h1>Create account</h1>
   <div class="error" id="error"></div>
   <form id="form">
     <label>Username</label>
     <input type="text" id="username" placeholder="Enter username" autocomplete="off" />
     <label>Password</label>
     <input type="password" id="password" placeholder="Enter password" />
-    <button type="submit" id="btn">Sign in</button>
+    <button type="submit" id="btn">Register</button>
   </form>
-  <div class="link">No account? <a href="/register">Register</a></div>
+  <div class="link">Already have an account? <a href="/auth/login.html">Sign in</a></div>
 </div>
 <script>
   const API = 'http://localhost:8080';
-
-  if (localStorage.getItem('authed')) {
-    window.location.href = '/';
-  }
 
   document.getElementById('form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -92,13 +88,13 @@
     const errEl = document.getElementById('error');
     errEl.style.display = 'none';
     btn.disabled = true;
-    btn.textContent = 'Signing in…';
+    btn.textContent = 'Registering…';
 
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
 
     try {
-      const res = await fetch(`${API}/auth/login`, {
+      const res = await fetch(`${API}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_name: username, password }),
@@ -108,13 +104,12 @@
       if (!res.ok) {
         throw new Error(data.error || data.message || `Error ${res.status}`);
       }
-      localStorage.setItem('authed', '1');
-      window.location.href = '/';
+      window.location.href = '/auth/login.html';
     } catch (err) {
       errEl.textContent = err.message;
       errEl.style.display = 'block';
       btn.disabled = false;
-      btn.textContent = 'Sign in';
+      btn.textContent = 'Register';
     }
   });
 </script>

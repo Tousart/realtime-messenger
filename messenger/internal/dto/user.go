@@ -8,7 +8,7 @@ type RegisterRequest struct {
 }
 
 type User struct {
-	ID        int64      `json:"user_id"`
+	ID        int64      `json:"user_id,string"`
 	Name      string     `json:"user_name"`
 	CreatedAt *time.Time `json:"created_at"`
 }
@@ -23,17 +23,17 @@ type SessionID struct {
 }
 
 type SessionPayload struct {
-	UserID   int64  `json:"user_id"`
+	UserID   int64  `json:"user_id,string"`
 	UserName string `json:"user_name"`
 }
 
 type ChatInfo struct {
-	ID   int64  `json:"chat_id"`
+	ID   int64  `json:"chat_id,string"`
 	Name string `json:"chat_name"`
 }
 
 type UserPayload struct {
-	ID    int64      `json:"user_id"`
+	ID    int64      `json:"user_id,string"`
 	Name  string     `json:"user_name"`
 	Chats []ChatInfo `json:"chats"`
 }

@@ -83,6 +83,7 @@ func main() {
 
 	// websocket manager
 	wsManager := wsapi.NewWebSocketManager(msgsUC, logger)
+	wsManager.WithMethods()
 
 	// go consume messages
 	msgsConsumer := infraredis.NewRedisConsumer(wsManager, redisPubsub)

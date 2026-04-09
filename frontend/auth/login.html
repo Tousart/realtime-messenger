@@ -77,11 +77,12 @@
     <input type="password" id="password" placeholder="Enter password" />
     <button type="submit" id="btn">Sign in</button>
   </form>
-  <div class="link">No account? <a href="/register">Register</a></div>
+  <div class="link">No account? <a href="/auth/register.html">Register</a></div>
 </div>
 <script>
   const API = 'http://localhost:8080';
 
+  // If already authed, go to messenger
   if (localStorage.getItem('authed')) {
     window.location.href = '/';
   }

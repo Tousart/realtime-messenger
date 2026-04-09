@@ -32,13 +32,13 @@ type Metadata struct {
 	userID int64
 }
 
-type WSMethod func(metadata *Metadata, conn *websocket.Conn, req *WebSocketRequest)
+type WSMethod func(metadata *Metadata, cw *ConnWriter, req *WebSocketRequest)
 
 type WebSocketManager struct {
 	messagesUC MessagesUsecase
 
 	// // control reflection user an his current connection
-	UserConnections map[int64][]*websocket.Conn
+	UserConnections map[int64][]*ConnWriter
 
 	// control reflections chat-user
 	ChatUsers map[int64]map[int64]int
@@ -59,7 +59,7 @@ type WebSocketManager struct {
 func NewWebSocketManager(messagesUC MessagesUsecase, logger *slog.Logger) *WebSocketManager {
 	return &WebSocketManager{
 		messagesUC:      messagesUC,
-		UserConnections: make(map[int64][]*websocket.Conn),
+		UserConnections: make(map[int64][]*ConnWriter),
 		ChatUsers:       make(map[int64]map[int64]int),
 		UserChat:        make(map[int64]int64),
 		mu:              &sync.RWMutex{},
@@ -69,8 +69,9 @@ func NewWebSocketManager(messagesUC MessagesUsecase, logger *slog.Logger) *WebSo
 
 func (ws *WebSocketManager) WithMethods() {
 	ws.WSMethods = map[string]WSMethod{
-		"send": WSMethod(ws.SendMessage),
-		"join": WSMethod(ws.JoinToChat),
+		"send":   WSMethod(ws.SendMessage),
+		"join":   WSMethod(ws.JoinToChat),
+		"create": WSMethod(ws.CreateChat),
 		// "leave": methods.MessengerMethod(LeaveChat),
 	}
 }
@@ -80,13 +81,16 @@ func (ws *WebSocketManager) UpgradeConnectionForUser(w http.ResponseWriter, r *h
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		ws.logger.Error("websocket: UpgradeConnectionForUser:", "err", err)
+		ws.logger.Error(op, "err", err)
 		return err
 	}
-	defer conn.Close()
+	cw := NewConnWriter(conn)
+	defer cw.Close()
 
-	ws.connectUser(r.Context(), conn, payload)
-	defer ws.disconnectUser(context.TODO(), conn, payload)
+	ws.connectUser(r.Context(), cw, payload)
+	defer ws.disconnectUser(context.TODO(), cw, payload)
+
+	ws.Send(cw, payload)
 
 	metadata := Metadata{
 		ctx:    r.Context(),
@@ -109,26 +113,13 @@ func (ws *WebSocketManager) UpgradeConnectionForUser(w http.ResponseWriter, r *h
 		}
 
 		if method, ok := ws.WSMethods[req.Method]; ok {
-			method(&metadata, conn, &req)
+			method(&metadata, cw, &req)
 		} else {
 			ws.logger.Info(op, "err", domain.ErrMethodNoTAllowed)
 		}
 	}
 
 	return err
-}
-
-func (ws *WebSocketManager) SendMessageToUsersConnections(ctx context.Context, message *dto.Message) error {
-	ws.mu.RLock()
-	defer ws.mu.RUnlock()
-	for userID := range ws.ChatUsers[message.ChatID] {
-		for _, conn := range ws.UserConnections[userID] {
-			if err := conn.WriteMessage(1, []byte(message.Text)); err != nil {
-				ws.logger.Error("websocket: SendMessageToUsersConnections:", "err", err)
-			}
-		}
-	}
-	return nil
 }
 
 /*
@@ -138,12 +129,12 @@ func (ws *WebSocketManager) SendMessageToUsersConnections(ctx context.Context, m
 */
 
 // connect user: add chats and connections
-func (ws *WebSocketManager) connectUser(ctx context.Context, conn *websocket.Conn, payload *dto.UserPayload) {
+func (ws *WebSocketManager) connectUser(ctx context.Context, cw *ConnWriter, payload *dto.UserPayload) {
 	ws.mu.Lock()
 	defer ws.mu.Unlock()
 
 	// user - connection
-	ws.UserConnections[payload.ID] = append(ws.UserConnections[payload.ID], conn)
+	ws.UserConnections[payload.ID] = append(ws.UserConnections[payload.ID], cw)
 
 	// chatID - user
 	for _, chat := range payload.Chats {
@@ -159,7 +150,7 @@ func (ws *WebSocketManager) connectUser(ctx context.Context, conn *websocket.Con
 }
 
 // disconnect user: remove chats and connections
-func (ws *WebSocketManager) disconnectUser(ctx context.Context, conn *websocket.Conn, payload *dto.UserPayload) {
+func (ws *WebSocketManager) disconnectUser(ctx context.Context, cw *ConnWriter, payload *dto.UserPayload) {
 	ws.mu.Lock()
 	defer ws.mu.Unlock()
 
@@ -170,7 +161,7 @@ func (ws *WebSocketManager) disconnectUser(ctx context.Context, conn *websocket.
 		delete(ws.UserConnections, payload.ID)
 	} else {
 		for i, c := range connections {
-			if c == conn {
+			if c == cw {
 				ws.UserConnections[payload.ID] = append(connections[:i], connections[i+1:]...)
 				break
 			}
