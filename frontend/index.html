@@ -31,8 +31,16 @@
       align-items: center;
       justify-content: space-between;
     }
-    .sidebar-header .username { font-size: 14px; font-weight: 600; }
-    .sidebar-header .user-id { font-size: 11px; color: #555; margin-top: 2px; }
+    .sidebar-header .username {
+      font-size: 14px;
+      font-weight: 600;
+      color: #e0e0e0;
+    }
+    .sidebar-header .user-id {
+      font-size: 11px;
+      color: #555;
+      margin-top: 2px;
+    }
     .logout-btn {
       background: none;
       border: 1px solid #333;
@@ -51,9 +59,13 @@
       text-transform: uppercase;
       letter-spacing: .06em;
     }
-    .chats-list { flex: 1; overflow-y: auto; padding: 0 8px; }
+    .chats-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 8px;
+    }
     .chat-item {
-      padding: 10px;
+      padding: 10px 10px;
       border-radius: 8px;
       cursor: pointer;
       font-size: 14px;
@@ -75,11 +87,14 @@
       cursor: pointer;
       transition: background .1s, color .1s;
     }
-    .create-btn:hover:not(:disabled) { background: #252525; color: #e0e0e0; }
-    .create-btn:disabled { opacity: .4; cursor: default; }
+    .create-btn:hover { background: #252525; color: #e0e0e0; }
 
-    /* ── Main ── */
-    .main { flex: 1; display: flex; flex-direction: column; }
+    /* ── Main area ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
     .chat-header {
       padding: 16px 20px;
       border-bottom: 1px solid #222;
@@ -106,9 +121,21 @@
       line-height: 1.45;
       word-break: break-word;
     }
-    .msg.mine { align-self: flex-end; background: #2a2a2a; }
-    .msg.other { align-self: flex-start; background: #1e1e1e; color: #ccc; }
-    .msg .meta { font-size: 11px; color: #555; margin-top: 4px; }
+    .msg.mine {
+      align-self: flex-end;
+      background: #2a2a2a;
+      color: #e0e0e0;
+    }
+    .msg.other {
+      align-self: flex-start;
+      background: #1e1e1e;
+      color: #ccc;
+    }
+    .msg .meta {
+      font-size: 11px;
+      color: #555;
+      margin-top: 4px;
+    }
 
     .placeholder {
       flex: 1;
@@ -119,7 +146,12 @@
       font-size: 14px;
     }
 
-    .input-area { padding: 14px 20px; border-top: 1px solid #222; display: flex; gap: 10px; }
+    .input-area {
+      padding: 14px 20px;
+      border-top: 1px solid #222;
+      display: flex;
+      gap: 10px;
+    }
     .input-area textarea {
       flex: 1;
       background: #1a1a1a;
@@ -137,7 +169,7 @@
       transition: border-color .15s;
     }
     .input-area textarea:focus { border-color: #444; }
-    .input-area textarea:disabled { opacity: .4; }
+    .input-area textarea:disabled { opacity: .4; cursor: default; }
     .send-btn {
       background: #e0e0e0;
       color: #0f0f0f;
@@ -147,6 +179,7 @@
       font-weight: 600;
       padding: 0 18px;
       cursor: pointer;
+      white-space: nowrap;
       transition: background .15s;
     }
     .send-btn:hover { background: #c8c8c8; }
@@ -184,21 +217,31 @@
     }
     .modal input:focus { border-color: #555; }
     .modal-hint { font-size: 12px; color: #555; margin-bottom: 14px; }
-    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
     .modal-actions button {
-      border-radius: 8px; font-size: 13px; font-weight: 600;
-      padding: 8px 18px; cursor: pointer; border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 18px;
+      cursor: pointer;
+      border: none;
     }
     .btn-cancel { background: #222; color: #888; }
     .btn-cancel:hover { background: #2a2a2a; color: #e0e0e0; }
     .btn-confirm { background: #e0e0e0; color: #0f0f0f; }
     .btn-confirm:hover { background: #c8c8c8; }
     .modal .error {
-      background: #2a1010; border: 1px solid #5a2020; border-radius: 6px;
-      color: #f87171; font-size: 12px; padding: 8px 12px;
-      margin-bottom: 12px; display: none;
+      background: #2a1010;
+      border: 1px solid #5a2020;
+      border-radius: 6px;
+      color: #f87171;
+      font-size: 12px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      display: none;
     }
 
+    /* scrollbar */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
@@ -206,6 +249,7 @@
 </head>
 <body>
 
+<!-- Sidebar -->
 <div class="sidebar">
   <div class="sidebar-header">
     <div>
@@ -216,9 +260,10 @@
   </div>
   <div class="chats-label">Chats</div>
   <div class="chats-list" id="chats-list"></div>
-  <button class="create-btn" id="create-btn" disabled>+ New chat</button>
+  <button class="create-btn" id="create-btn">+ New chat</button>
 </div>
 
+<!-- Main -->
 <div class="main">
   <div class="chat-header" id="chat-header">Select a chat</div>
   <div class="messages" id="messages">
@@ -230,6 +275,7 @@
   </div>
 </div>
 
+<!-- Create chat modal -->
 <div class="modal-backdrop" id="modal">
   <div class="modal">
     <h2>New chat</h2>
@@ -250,24 +296,27 @@
   const API = 'http://localhost:8080';
   const WS_URL = 'ws://localhost:8080/messenger';
 
-  // Auth guard
+  // ── Auth guard ──
+  // HttpOnly cookie is invisible to JS, use localStorage flag set on login
   if (!localStorage.getItem('authed')) {
-    window.location.href = '/login';
+    window.location.href = '/auth/login.html';
   }
 
+  // ── State ──
   let ws = null;
-  let me = null;
+  let me = null;          // { user_id, user_name }
   let activeChatId = null;
-  let chatMessages = {};
+  const chatMessages = {}; // chatId → [{sender_id, text, created_at, mine}]
 
-  const usernameEl    = document.getElementById('username');
-  const userIdEl      = document.getElementById('user-id');
-  const chatsListEl   = document.getElementById('chats-list');
-  const chatHeaderEl  = document.getElementById('chat-header');
-  const messagesEl    = document.getElementById('messages');
-  const placeholderEl = document.getElementById('placeholder');
-  const msgInput      = document.getElementById('msg-input');
-  const sendBtn       = document.getElementById('send-btn');
+  // ── DOM refs ──
+  const usernameEl   = document.getElementById('username');
+  const userIdEl     = document.getElementById('user-id');
+  const chatsListEl  = document.getElementById('chats-list');
+  const chatHeaderEl = document.getElementById('chat-header');
+  const messagesEl   = document.getElementById('messages');
+  const placeholderEl= document.getElementById('placeholder');
+  const msgInput     = document.getElementById('msg-input');
+  const sendBtn      = document.getElementById('send-btn');
 
   // ── WebSocket ──
   function connect() {
@@ -286,13 +335,6 @@
         me = { user_id: data.user_id, user_name: data.user_name };
         usernameEl.textContent = me.user_name;
         userIdEl.textContent   = `ID: ${me.user_id}`;
-        document.getElementById('create-btn').disabled = false;
-        chatMessages = {};
-        activeChatId = null;
-        msgInput.disabled = true;
-        sendBtn.disabled = true;
-        chatHeaderEl.textContent = 'Select a chat';
-        chatHeaderEl.classList.remove('active');
         renderChats(data.chats || []);
         return;
       }
@@ -300,7 +342,7 @@
       switch (data.type) {
         case 'error':
           console.warn('[ws] error:', data.status, data.error);
-          if (data.status === 401) { localStorage.removeItem('authed'); window.location.href = '/login'; }
+          if (data.status === 401) { localStorage.removeItem('authed'); window.location.href = '/auth/login.html'; }
           break;
 
         case 'ok':
@@ -328,11 +370,10 @@
 
     ws.onclose = (ev) => {
       console.log('[ws] closed', ev.code);
-      me = null;
-      document.getElementById('create-btn').disabled = true;
+      // 1008 = Policy Violation (auth failure from server)
       if (ev.code === 1008 || ev.code === 4001) {
         localStorage.removeItem('authed');
-        window.location.href = '/login';
+        window.location.href = '/auth/login.html';
         return;
       }
       setTimeout(connect, 2000);
@@ -357,6 +398,7 @@
   }
 
   function addChat(chat) {
+    // avoid duplicates
     if (document.querySelector(`[data-chat-id="${chat.chat_id}"]`)) return;
     if (!chatMessages[chat.chat_id]) chatMessages[chat.chat_id] = [];
 
@@ -371,14 +413,18 @@
   function joinChat(chatId, chatName) {
     if (activeChatId === chatId) return;
     activeChatId = chatId;
-    document.querySelectorAll('.chat-item').forEach(el =>
-      el.classList.toggle('active', el.dataset.chatId == chatId));
+
+    document.querySelectorAll('.chat-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.chatId == chatId);
+    });
+
     chatHeaderEl.textContent = chatName;
     chatHeaderEl.classList.add('active');
     msgInput.disabled = false;
     sendBtn.disabled = false;
     msgInput.focus();
-    send('join', { chat_id: String(chatId) });
+
+    send('join', { chat_id: chatId });
     renderMessages(chatId);
   }
 
@@ -393,23 +439,23 @@
     const msgs = chatMessages[chatId] || [];
     placeholderEl.style.display = msgs.length ? 'none' : 'flex';
     messagesEl.querySelectorAll('.msg').forEach(el => el.remove());
+
     msgs.forEach(m => {
       const el = document.createElement('div');
       el.className = `msg ${m.mine ? 'mine' : 'other'}`;
-      const time = m.created_at
-        ? new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
-        : '';
+      const time = m.created_at ? new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
       el.innerHTML = `<div>${escHtml(m.text)}</div><div class="meta">${m.mine ? 'You' : `User ${m.sender_id}`}${time ? ' · ' + time : ''}</div>`;
       messagesEl.appendChild(el);
     });
+
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  // ── Send ──
+  // ── Send message ──
   function sendMessage() {
     const text = msgInput.value.trim();
     if (!text || !activeChatId) return;
-    send('send', { chat_id: String(activeChatId), text, sender_id: String(me?.user_id) });
+    send('send', { chat_id: activeChatId, text, sender_id: me?.user_id });
     msgInput.value = '';
     msgInput.style.height = '42px';
   }
@@ -424,10 +470,10 @@
   });
 
   // ── Create chat modal ──
-  const modalEl    = document.getElementById('modal');
-  const modalError = document.getElementById('modal-error');
-  const modalName  = document.getElementById('modal-name');
-  const modalParts = document.getElementById('modal-participants');
+  const modalEl     = document.getElementById('modal');
+  const modalError  = document.getElementById('modal-error');
+  const modalName   = document.getElementById('modal-name');
+  const modalParts  = document.getElementById('modal-participants');
 
   document.getElementById('create-btn').addEventListener('click', () => {
     console.log('[create-btn] clicked | me:', me, '| ws.readyState:', ws?.readyState);
@@ -451,6 +497,7 @@
 
     const rawIds = modalParts.value.split(',').map(s => s.trim()).filter(Boolean);
     const participantIds = rawIds.filter(s => !isNaN(s) && Number(s) > 0);
+
     const allIds = [...new Set([String(me.user_id), ...participantIds.map(String)])];
     const participants = allIds.map(id => ({ participant_id: id, participant_name: null, role: null }));
 
@@ -467,17 +514,23 @@
 
   // ── Logout ──
   document.getElementById('logout-btn').addEventListener('click', () => {
+    // Cookie is HttpOnly — can't clear it via JS; clearing localStorage flag is enough for auth guard.
+    // The session will expire server-side (6h TTL in Redis).
     localStorage.removeItem('authed');
     if (ws) ws.close();
-    window.location.href = '/login';
+    window.location.href = '/auth/login.html';
   });
 
+  // ── Utils ──
   function escHtml(str) {
     return String(str)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
+  // ── Start ──
   connect();
 </script>
 </body>

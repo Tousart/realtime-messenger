@@ -3,14 +3,14 @@ package dto
 import "time"
 
 type SendMessageRequest struct {
-	SenderID int64  `json:"sender_id"`
-	ChatID   int64  `json:"chat_id"`
+	SenderID int64  `json:"sender_id,string"`
+	ChatID   int64  `json:"chat_id,string"`
 	Text     string `json:"text"`
 }
 
 type Message struct {
-	SenderID  int64      `json:"sender_id"`
-	ChatID    int64      `json:"chat_id"`
+	SenderID  int64      `json:"sender_id,string"`
+	ChatID    int64      `json:"chat_id,string"`
 	Text      string     `json:"text"`
-	CreatedAt *time.Time `created_at:"json"`
+	CreatedAt *time.Time `json:"created_at"`
 }
