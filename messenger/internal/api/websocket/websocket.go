@@ -43,9 +43,6 @@ type WebSocketManager struct {
 	// control reflections chat-user
 	ChatUsers map[int64]map[int64]int
 
-	// control reflection user an his current chat
-	UserChat map[int64]int64
-
 	// for isolated access to maps
 	mu *sync.RWMutex
 
@@ -61,7 +58,6 @@ func NewWebSocketManager(messagesUC MessagesUsecase, logger *slog.Logger) *WebSo
 		messagesUC:      messagesUC,
 		UserConnections: make(map[int64][]*ConnWriter),
 		ChatUsers:       make(map[int64]map[int64]int),
-		UserChat:        make(map[int64]int64),
 		mu:              &sync.RWMutex{},
 		logger:          logger,
 	}

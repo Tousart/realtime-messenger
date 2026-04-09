@@ -18,6 +18,36 @@ func NewMessagesRepository(db *sql.DB) *MessagesRepository {
 	}
 }
 
+func (r *MessagesRepository) Messages(ctx context.Context, chatID int64) ([]domain.Message, error) {
+	const op = "repository: postgres: Messages:"
+
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT message_id, user_id, chat_id, message_body, created_at
+		FROM messages
+		WHERE chat_id = $1
+		ORDER BY created_at ASC`,
+		chatID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("%s %w", op, err)
+	}
+	defer rows.Close()
+
+	var messages []domain.Message
+	for rows.Next() {
+		var msg domain.Message
+		if err = rows.Scan(&msg.ID, &msg.SenderID, &msg.ChatID, &msg.Text, &msg.CreatedAt); err != nil {
+			return nil, fmt.Errorf("%s %w", op, err)
+		}
+		messages = append(messages, msg)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("%s %w", op, err)
+	}
+
+	return messages, nil
+}
+
 func (r *MessagesRepository) CreateChat(ctx context.Context, chat *domain.Chat) ([]domain.ChatParticipant, error) {
 	const op = "repository: postgres: CreateChat:"
 

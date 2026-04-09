@@ -7,6 +7,7 @@ import (
 )
 
 type MessagesRepository interface {
+	Messages(ctx context.Context, chatID int64) ([]domain.Message, error)
 	CreateChat(ctx context.Context, chat *domain.Chat) ([]domain.ChatParticipant, error)
 	UsersChats(ctx context.Context, userID int64) ([]domain.ChatInfo, error)
 	Save(ctx context.Context, msg *domain.Message) error
@@ -18,14 +19,14 @@ type UsersRepository interface {
 }
 
 type ChatPublisher interface {
-	PublishMessage(ctx context.Context, chatID int64, msgBytes []byte) error
+	PublishMessage(ctx context.Context, msg *domain.Message) error
 	Subscribe(ctx context.Context, chatIDs ...int64) error
 	Unsubscribe(ctx context.Context, chatIDs ...int64) error
 }
 
 type SessionsRepository interface {
-	GenerateSessionID(ctx context.Context, payload []byte) (string, error)
-	Payload(ctx context.Context, sessionID string) ([]byte, error)
+	GenerateSessionID(ctx context.Context, payload *domain.SessionPayload) (string, error)
+	Payload(ctx context.Context, sessionID string) (*domain.SessionPayload, error)
 }
 
 type PasswordHasher interface {

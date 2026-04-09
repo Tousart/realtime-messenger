@@ -54,11 +54,12 @@ func (ws *WebSocketManager) JoinToChat(metadata *Metadata, cw *ConnWriter, req *
 		return
 	}
 
-	ws.mu.Lock()
-	ws.UserChat[metadata.userID] = chat.ChatID
-	ws.mu.Unlock()
+	messages, err := ws.messagesUC.Messages(metadata.ctx, chat.ChatID)
+	if err != nil {
+		ws.SendError(cw, err)
+	}
 
-	ws.SendResponse(cw, TypeOk, http.StatusOK, nil)
+	ws.SendResponse(cw, TypeOk, http.StatusOK, messages)
 }
 
 func (ws *WebSocketManager) CreateChat(metadata *Metadata, cw *ConnWriter, req *WebSocketRequest) {
@@ -80,6 +81,13 @@ func (ws *WebSocketManager) CreateChat(metadata *Metadata, cw *ConnWriter, req *
 		ws.SendError(cw, err)
 		return
 	}
+
+	ws.mu.Lock()
+	ws.ChatUsers[chat.ID] = make(map[int64]int)
+	for _, participant := range chat.ChatParticipants {
+		ws.ChatUsers[chat.ID][participant.ID] += len(ws.UserConnections[participant.ID])
+	}
+	ws.mu.Unlock()
 
 	ws.SendResponse(cw, TypeChatCreated, http.StatusCreated, chat)
 }

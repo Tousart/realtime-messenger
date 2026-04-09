@@ -12,6 +12,11 @@ type User struct {
 	CreatedAt *time.Time
 }
 
+type SessionPayload struct {
+	UserID   int64
+	UserName string
+}
+
 func IsValidUserName(name string) error {
 	if len(name) == 0 || len(strings.TrimSpace(name)) != len(name) {
 		return ErrBadUserName
