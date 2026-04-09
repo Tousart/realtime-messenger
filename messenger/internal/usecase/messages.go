@@ -2,8 +2,8 @@ package usecase
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/tousart/messenger/internal/domain"
 	"github.com/tousart/messenger/internal/dto"
@@ -21,6 +21,26 @@ func NewMessagesUsecase(msgsRepo MessagesRepository, chatPub ChatPublisher, idGe
 		chatPub:  chatPub,
 		idGen:    idGen,
 	}
+}
+
+func (uc *MessagesUsecase) Messages(ctx context.Context, chatID int64) (*dto.Messages, error) {
+	messagesDB, err := uc.msgsRepo.Messages(ctx, chatID)
+	if err != nil {
+		return nil, fmt.Errorf("usecase: Messages: %w", err)
+	}
+
+	messages := make([]dto.Message, len(messagesDB))
+	for i, msg := range messagesDB {
+		messages[i] = dto.Message{
+			ID:        msg.ID,
+			SenderID:  msg.SenderID,
+			ChatID:    msg.ChatID,
+			Text:      msg.Text,
+			CreatedAt: msg.CreatedAt,
+		}
+	}
+
+	return &dto.Messages{Messages: messages}, nil
 }
 
 func (uc *MessagesUsecase) SendMessage(ctx context.Context, input *dto.SendMessageRequest) (*dto.Message, error) {
@@ -45,18 +65,12 @@ func (uc *MessagesUsecase) SendMessage(ctx context.Context, input *dto.SendMessa
 		return nil, fmt.Errorf("%s %w", op, err)
 	}
 
-	// костыль
-	msgBytes, err := json.Marshal(input)
-	if err != nil {
-		return nil, fmt.Errorf("%s %w", op, err)
-	}
-	// костыль
-
-	if err = uc.chatPub.PublishMessage(ctx, input.ChatID, msgBytes); err != nil {
+	if err = uc.chatPub.PublishMessage(ctx, msg); err != nil {
 		return nil, fmt.Errorf("u%s %w", op, err)
 	}
 
 	return &dto.Message{
+		ID:        msg.ID,
 		SenderID:  msg.SenderID,
 		ChatID:    msg.ChatID,
 		Text:      msg.Text,
@@ -118,6 +132,11 @@ func (uc *MessagesUsecase) CreateChat(ctx context.Context, input *dto.CreateChat
 			Name: &participant.Name,
 			Role: &participant.Role,
 		}
+	}
+
+	// костыльное логирование
+	if err = uc.SubscribeToChats(ctx, chat.ID); err != nil {
+		log.Printf("%s %v\n", op, err)
 	}
 
 	return &dto.Chat{

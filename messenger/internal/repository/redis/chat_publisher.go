@@ -2,10 +2,13 @@ package redis
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/tousart/messenger/internal/domain"
 )
 
 type ChatPublisher struct {
@@ -20,14 +23,38 @@ func NewChatPublisher(client *redis.Client, pubsub *redis.PubSub) *ChatPublisher
 	}
 }
 
-func (mh *ChatPublisher) PublishMessage(ctx context.Context, chatID int64, msgBytes []byte) error {
-	if err := mh.client.Publish(ctx, idToString(chatID), msgBytes).Err(); err != nil {
-		return fmt.Errorf("repository: redis: PublishMessage: %w", err)
+// соответствует dto.Message
+type messagePayload struct {
+	ID        int64      `json:"message_id,string"`
+	SenderID  int64      `json:"sender_id,string"`
+	ChatID    int64      `json:"chat_id,string"`
+	Text      string     `json:"text"`
+	CreatedAt *time.Time `json:"created_at"`
+}
+
+func (p *ChatPublisher) PublishMessage(ctx context.Context, msg *domain.Message) error {
+	const op = "repository: redis: PublishMessage:"
+
+	payload := messagePayload{
+		ID:        msg.ID,
+		SenderID:  msg.SenderID,
+		ChatID:    msg.ChatID,
+		Text:      msg.Text,
+		CreatedAt: msg.CreatedAt,
+	}
+
+	msgBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("%s %w", op, err)
+	}
+
+	if err := p.client.Publish(ctx, idToString(msg.ChatID), msgBytes).Err(); err != nil {
+		return fmt.Errorf("%s %w", op, err)
 	}
 	return nil
 }
 
-func (mh *ChatPublisher) Subscribe(ctx context.Context, chatIDs ...int64) error {
+func (p *ChatPublisher) Subscribe(ctx context.Context, chatIDs ...int64) error {
 	if chatIDs == nil {
 		return nil
 	}
@@ -37,7 +64,7 @@ func (mh *ChatPublisher) Subscribe(ctx context.Context, chatIDs ...int64) error 
 		strChatIDs[i] = idToString(chatID)
 	}
 
-	if err := mh.pubsub.Subscribe(ctx, strChatIDs...); err != nil {
+	if err := p.pubsub.Subscribe(ctx, strChatIDs...); err != nil {
 		return fmt.Errorf("repository: redis: Subscribe: %w", err)
 	}
 

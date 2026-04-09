@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/tousart/messenger/internal/domain"
@@ -74,18 +73,12 @@ func (uc *UsersUsecase) Login(ctx context.Context, input *dto.LoginRequest) (*dt
 		return nil, fmt.Errorf("%s %w", op, domain.ErrIncorrectPassword)
 	}
 
-	// костыль
-	sessionPayload := dto.SessionPayload{
+	sessionPayload := &domain.SessionPayload{
 		UserID:   user.ID,
 		UserName: user.Name,
 	}
-	payload, err := json.Marshal(sessionPayload)
-	if err != nil {
-		return nil, fmt.Errorf("%s %w", op, err)
-	}
-	// костыль
 
-	sessionID, err := uc.sessionsRepo.GenerateSessionID(ctx, payload)
+	sessionID, err := uc.sessionsRepo.GenerateSessionID(ctx, sessionPayload)
 	if err != nil {
 		return nil, fmt.Errorf("%s %w", op, err)
 	}
@@ -96,19 +89,13 @@ func (uc *UsersUsecase) Login(ctx context.Context, input *dto.LoginRequest) (*dt
 }
 
 func (uc *UsersUsecase) ValidateSessionID(ctx context.Context, sessionID string) (*dto.SessionPayload, error) {
-	const op = "usecase: ValidateSessionID:"
-
-	payloadBytes, err := uc.sessionsRepo.Payload(ctx, sessionID)
+	payload, err := uc.sessionsRepo.Payload(ctx, sessionID)
 	if err != nil {
-		return nil, fmt.Errorf("%s %w", op, err)
+		return nil, fmt.Errorf("usecase: ValidateSessionID: %w", err)
 	}
 
-	// костыль
-	var payload dto.SessionPayload
-	if err = json.Unmarshal(payloadBytes, &payload); err != nil {
-		return nil, fmt.Errorf("%s %w", op, err)
-	}
-	// костыль
-
-	return &payload, nil
+	return &dto.SessionPayload{
+		UserID:   payload.UserID,
+		UserName: payload.UserName,
+	}, nil
 }

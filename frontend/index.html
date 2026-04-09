@@ -345,13 +345,26 @@
           if (data.status === 401) { localStorage.removeItem('authed'); window.location.href = '/auth/login.html'; }
           break;
 
-        case 'ok':
-          // join ack — no action needed
+        case 'ok': {
+          // join ack — payload contains message history
+          const msgs = data.payload?.messages;
+          if (Array.isArray(msgs) && activeChatId !== null) {
+            chatMessages[activeChatId] = msgs.map(m => ({
+              message_id: m.message_id,
+              sender_id: m.sender_id,
+              chat_id: m.chat_id,
+              text: m.text,
+              created_at: m.created_at,
+              mine: String(m.sender_id) === String(me?.user_id),
+            }));
+            renderMessages(activeChatId);
+          }
           break;
+        }
 
         case 'message.new': {
-          const { sender_id, chat_id, text, created_at } = data.payload;
-          pushMessage(chat_id, { sender_id, text, created_at, mine: String(sender_id) === String(me?.user_id) });
+          const { message_id, sender_id, chat_id, text, created_at } = data.payload;
+          pushMessage(chat_id, { message_id, sender_id, text, created_at, mine: String(sender_id) === String(me?.user_id) });
           break;
         }
 
