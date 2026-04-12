@@ -18,6 +18,17 @@ app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`Frontend running on http://localhost:${PORT}`);
 });
+
+function shutdown(signal) {
+    console.log(`Received ${signal}, shutting down...`);
+    server.close(() => {
+        console.log('HTTP server closed');
+        process.exit(0);
+    });
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
