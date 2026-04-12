@@ -1,0 +1,5 @@
+env_path: configs/local.env
+
+server:
+  host: "" 
+  port: 8080

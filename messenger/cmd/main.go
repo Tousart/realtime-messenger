@@ -8,18 +8,18 @@ import (
 	"syscall"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/tousart/messenger/config"
+	"github.com/tousart/messenger/configs"
 	httpapi "github.com/tousart/messenger/internal/api/http"
 	wsapi "github.com/tousart/messenger/internal/api/websocket"
 	infraredis "github.com/tousart/messenger/internal/infrastructure/redis"
-	"github.com/tousart/messenger/internal/repository/postgres"
+	"github.com/tousart/messenger/internal/repository/postgresql"
 	"github.com/tousart/messenger/internal/repository/redis"
 	"github.com/tousart/messenger/internal/server"
 	"github.com/tousart/messenger/internal/usecase"
-	pkggen "github.com/tousart/messenger/pkg/generator"
-	pkghashpassword "github.com/tousart/messenger/pkg/hashpassword"
-	pkglogger "github.com/tousart/messenger/pkg/logger"
-	pkgpostgres "github.com/tousart/messenger/pkg/postgres"
+	"github.com/tousart/messenger/pkg/generator"
+	"github.com/tousart/messenger/pkg/hashpassword"
+	"github.com/tousart/messenger/pkg/logger"
+	pkgpsql "github.com/tousart/messenger/pkg/postgresql"
 	pkgredis "github.com/tousart/messenger/pkg/redis"
 	"golang.org/x/sync/errgroup"
 )
@@ -29,76 +29,78 @@ func main() {
 	defer cancel()
 	ewg, ctx := errgroup.WithContext(sigCtx)
 
-	// config
-	cfg := config.LoadConfig()
+	// configs
+
+	flags := configs.ParseFlags()
+	cfg, err := configs.LoadConfig(flags.CfgPath)
+	if err != nil {
+		log.Fatalf("failed to load config: %v\n", err)
+	}
 
 	// logger
-	logger := pkglogger.InitLogger()
 
-	/*
+	logger := logger.InitLogger()
 
-		Подключение ко внешним инструментам
+	// connect to postgresql
 
-	*/
-
-	// Connect to PSQL
-	db, err := pkgpostgres.ConnectToPSQL(cfg.PostgreSQL.Addr)
+	db, err := pkgpsql.ConnectToPSQL(
+		cfg.PSQL.User, cfg.PSQL.Password, cfg.PSQL.Host, cfg.PSQL.DB, cfg.PSQL.SSLMode, cfg.PSQL.Port)
 	if err != nil {
-		log.Fatalf("failed to connect to psql: %v\n", err)
+		log.Fatalf("failed connect to psql: %v\n", err)
 	}
-	// Create Redis-client
-	redisClient := pkgredis.NewClient(cfg.Redis.Addr)
+
+	// create redis client
+
+	redisClient := pkgredis.NewClient(cfg.Redis.Host, cfg.Redis.Password, cfg.Redis.Port)
 	defer redisClient.Close()
-	redisPubsub := redisClient.CreatePubSub(context.Background())
+	redisPubsub := redisClient.CreatePubSub(ctx)
 
-	/*
+	// password hasher
 
-		Создание экземпляров repository, usecase
+	passwordHasher := hashpassword.NewBCryptPasswordHasher()
 
-	*/
-	// to hashing users password
-	passwordHasher := pkghashpassword.NewBCryptPasswordHasher()
 	// id generator
-	idGen := pkggen.NewGenerator()
-	// repository
-	chatPub := redis.NewChatPublisher(redisClient.Client(), redisPubsub)
-	sessionsRepo := redis.NewSessionsRepository(redisClient.Client())
-	usersRepo, err := postgres.NewUsersRepository(db)
-	if err != nil {
-		log.Fatalf("failed to create publisher repository: %v", err)
-	}
-	msgsRepo := postgres.NewMessagesRepository(db)
 
-	// messages handler service
+	idGen := generator.NewGenerator()
+
+	// repository
+
+	chatPub := redis.NewChatPublisher(redisClient.Client(), redisPubsub)
+
+	sessionsRepo := redis.NewSessionsRepository(redisClient.Client())
+
+	usersRepo := postgresql.NewUsersRepository(db)
+
+	msgsRepo := postgresql.NewMessagesRepository(db)
+
+	// usecase
+
 	msgsUC := usecase.NewMessagesUsecase(msgsRepo, chatPub, idGen)
 
-	// users service
-	usersService := usecase.NewUsersService(usersRepo, sessionsRepo, passwordHasher, idGen)
-
-	/*
-
-		Создание экземпляров api, infrastructure и запуск сервера
-
-	*/
+	usersUC := usecase.NewUsersService(usersRepo, sessionsRepo, passwordHasher, idGen)
 
 	// websocket manager
+
 	wsManager := wsapi.NewWebSocketManager(msgsUC, logger)
 	wsManager.WithMethods()
 
 	// go consume messages
+
 	msgsConsumer := infraredis.NewRedisConsumer(wsManager, redisPubsub)
 	ewg.Go(func() error {
 		return msgsConsumer.ConsumeMessages(ctx)
 	})
 
-	// api methods router
+	// api
+
 	r := chi.NewRouter()
-	// create server api
-	srvApi := httpapi.NewAPI(wsManager, msgsUC, usersService, logger)
-	isProd := true // isProd - boolean flag to local development (false if local else true)
-	srvApi.WithHandlers(r, isProd)
+
+	srvApi := httpapi.NewAPI(wsManager, msgsUC, usersUC, logger)
+	srvApi.WithHandlers(r)
+
 	// create and run server
-	srv := server.NewServer(cfg.Server.Addr, r)
+
+	srv := server.NewServer(cfg.Server.Host, cfg.Server.Port, r, logger)
 	ewg.Go(func() error {
 		return srv.CreateAndRunServer(ctx)
 	})

@@ -43,7 +43,7 @@ func (r *SessionsRepository) Payload(ctx context.Context, sessionID string) (*do
 		return nil, fmt.Errorf("%s %w", op, err)
 	}
 
-	var sp domain.SessionPayload
+	var sp sessionPayload
 	if err = json.Unmarshal(payloadBytes, &sp); err != nil {
 		return nil, fmt.Errorf("%s %w", op, err)
 	}

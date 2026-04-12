@@ -1,4 +1,4 @@
-package postgres
+package postgresql
 
 import (
 	"context"
@@ -14,10 +14,10 @@ type UsersRepository struct {
 	db *sql.DB
 }
 
-func NewUsersRepository(db *sql.DB) (*UsersRepository, error) {
+func NewUsersRepository(db *sql.DB) *UsersRepository {
 	return &UsersRepository{
 		db: db,
-	}, nil
+	}
 }
 
 func (r *UsersRepository) Create(ctx context.Context, user *domain.User) error {

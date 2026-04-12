@@ -2,7 +2,8 @@ package server
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -10,31 +11,32 @@ import (
 )
 
 type Server struct {
-	Addr   string
 	srv    *http.Server
-	router *chi.Mux
+	logger *slog.Logger
 }
 
-func NewServer(addr string, r *chi.Mux) *Server {
+func NewServer(host string, port int, r *chi.Mux, logger *slog.Logger) *Server {
 	srv := &http.Server{
-		Addr:    addr,
+		Addr:    fmt.Sprintf("%s:%d", host, port),
 		Handler: r,
 	}
 
 	return &Server{
-		Addr:   addr,
 		srv:    srv,
-		router: r,
+		logger: logger,
 	}
 }
 
 func (s *Server) CreateAndRunServer(ctx context.Context) error {
-	log.Printf("server run on %s\n", s.Addr)
+	s.logger.Info(fmt.Sprintf("server run on %s", s.srv.Addr))
+
 	if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Printf("run server error: %s\n", err.Error())
+		s.logger.Error("run server error", "err", err)
 		return err
 	}
-	log.Printf("server on %s stopped\n", s.Addr)
+
+	s.logger.Info(fmt.Sprintf("server on %s stopped", s.srv.Addr))
+
 	return nil
 }
 
@@ -43,9 +45,12 @@ func (s *Server) ShutdownServer(ctx context.Context) error {
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
 	if err := s.srv.Shutdown(shutdownCtx); err != nil {
 		return err
 	}
-	log.Println("server shutting down graceful")
+
+	s.logger.Info("server shutting down graceful")
+
 	return nil
 }

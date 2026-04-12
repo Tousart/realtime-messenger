@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"fmt"
 
 	rdb "github.com/redis/go-redis/v9"
 )
@@ -11,10 +12,11 @@ type RedisConnection struct {
 	pubsub *rdb.PubSub
 }
 
-func NewClient(addr string) *RedisConnection {
+func NewClient(host, password string, port int) *RedisConnection {
 	return &RedisConnection{
 		client: rdb.NewClient(&rdb.Options{
-			Addr: addr,
+			Addr:     fmt.Sprintf("%s:%d", host, port),
+			Password: password,
 		}),
 	}
 }
