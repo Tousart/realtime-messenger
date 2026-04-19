@@ -9,8 +9,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/tousart/messenger/configs"
-	httpapi "github.com/tousart/messenger/internal/api/http"
-	wsapi "github.com/tousart/messenger/internal/api/websocket"
+	"github.com/tousart/messenger/internal/api/httpapi"
+	"github.com/tousart/messenger/internal/api/wsapi"
 	infraredis "github.com/tousart/messenger/internal/infrastructure/redis"
 	"github.com/tousart/messenger/internal/repository/postgresql"
 	"github.com/tousart/messenger/internal/repository/redis"

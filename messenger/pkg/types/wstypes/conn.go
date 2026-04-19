@@ -1,8 +1,7 @@
-package websocket
+package wstypes
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/gorilla/websocket"
 )
@@ -19,7 +18,9 @@ func NewConnWriter(conn *websocket.Conn) *ConnWriter {
 		conn:    conn,
 		done:    make(chan struct{}),
 	}
+
 	go cw.writeInConn()
+
 	return cw
 }
 
@@ -36,7 +37,9 @@ func (cw *ConnWriter) writeInConn() {
 	defer close(cw.done)
 	for msg := range cw.writeCh {
 		if err := cw.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-			log.Printf("write in websocket conn: %v\n", err)
+
+			// TODO: обработка ошибки
+
 			return
 		}
 	}

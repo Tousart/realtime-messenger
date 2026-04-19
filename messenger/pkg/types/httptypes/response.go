@@ -1,4 +1,4 @@
-package apirender
+package httptypes
 
 import (
 	"encoding/json"
