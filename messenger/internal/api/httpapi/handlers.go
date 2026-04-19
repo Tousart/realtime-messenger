@@ -1,4 +1,4 @@
-package api
+package httpapi
 
 import (
 	"encoding/json"
@@ -7,9 +7,19 @@ import (
 	"github.com/tousart/messenger/internal/api/helpers"
 	"github.com/tousart/messenger/internal/domain"
 	"github.com/tousart/messenger/internal/dto"
-	"github.com/tousart/messenger/internal/middleware"
-	"github.com/tousart/messenger/pkg/apirender"
+	"github.com/tousart/messenger/internal/middleware/httpmw"
+	"github.com/tousart/messenger/pkg/types/httptypes"
 )
+
+/*
+	──────────────────────────────────────────────────────────────
+	ping pong
+	──────────────────────────────────────────────────────────────
+*/
+
+func (ap *API) pingPongHandler(w http.ResponseWriter, r *http.Request) {
+	httptypes.JSON(w, http.StatusOK, map[string]string{"ping": "pong"})
+}
 
 /*
 	──────────────────────────────────────────────────────────────
@@ -18,9 +28,9 @@ import (
 */
 
 func (ap *API) messengerWebSocketConnectionHandler(w http.ResponseWriter, r *http.Request) {
-	sessionPayload, ok := r.Context().Value(middleware.ContextKeyAuthMetadata).(*dto.SessionPayload)
+	sessionPayload, ok := r.Context().Value(httpmw.ContextKeyAuthMetadata).(*dto.SessionPayload)
 	if !ok || sessionPayload == nil {
-		apirender.Error(w, http.StatusUnauthorized, "unauthorized")
+		httptypes.Error(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
@@ -51,7 +61,7 @@ func (ap *API) messengerWebSocketConnectionHandler(w http.ResponseWriter, r *htt
 func (ap *API) registerHandler(w http.ResponseWriter, r *http.Request) {
 	var req dto.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		apirender.Error(w, http.StatusBadRequest, "invalid request")
+		httptypes.Error(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 	defer r.Body.Close()
@@ -62,13 +72,13 @@ func (ap *API) registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apirender.JSON(w, http.StatusCreated, user)
+	httptypes.JSON(w, http.StatusCreated, user)
 }
 
 func (ap *API) loginHandler(w http.ResponseWriter, r *http.Request) {
 	var req dto.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		apirender.Error(w, http.StatusBadRequest, "invalid request")
+		httptypes.Error(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 	defer r.Body.Close()
@@ -86,7 +96,7 @@ func (ap *API) loginHandler(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 	})
 
-	apirender.JSON(w, http.StatusOK, sessionID)
+	httptypes.JSON(w, http.StatusOK, sessionID)
 }
 
 /*
@@ -97,10 +107,5 @@ func (ap *API) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 func (ap *API) renderError(w http.ResponseWriter, err error) {
 	msg, status := helpers.MapError(err)
-	if status == http.StatusInternalServerError {
-		ap.logger.Error(err.Error())
-	} else {
-		ap.logger.Info(err.Error())
-	}
-	apirender.Error(w, status, msg)
+	httptypes.Error(w, status, msg)
 }

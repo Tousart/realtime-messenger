@@ -1,4 +1,4 @@
-package websocket
+package wsapi
 
 import (
 	"context"
@@ -11,6 +11,8 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/tousart/messenger/internal/domain"
 	"github.com/tousart/messenger/internal/dto"
+	"github.com/tousart/messenger/internal/middleware/wsmw"
+	"github.com/tousart/messenger/pkg/types/wstypes"
 )
 
 var upgrader = websocket.Upgrader{
@@ -22,23 +24,11 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-type WebSocketRequest struct {
-	Method  string          `json:"method"`
-	Payload json.RawMessage `json:"payload"`
-}
-
-type Metadata struct {
-	ctx    context.Context
-	userID int64
-}
-
-type WSMethod func(metadata *Metadata, cw *ConnWriter, req *WebSocketRequest)
-
 type WebSocketManager struct {
 	messagesUC MessagesUsecase
 
 	// // control reflection user an his current connection
-	UserConnections map[int64][]*ConnWriter
+	UserConnections map[int64][]*wstypes.ConnWriter
 
 	// control reflections chat-user
 	ChatUsers map[int64]map[int64]int
@@ -47,7 +37,7 @@ type WebSocketManager struct {
 	mu *sync.RWMutex
 
 	// methods
-	WSMethods map[string]WSMethod
+	WSMethods map[string]wstypes.Method
 
 	// logger
 	logger *slog.Logger
@@ -56,20 +46,30 @@ type WebSocketManager struct {
 func NewWebSocketManager(messagesUC MessagesUsecase, logger *slog.Logger) *WebSocketManager {
 	return &WebSocketManager{
 		messagesUC:      messagesUC,
-		UserConnections: make(map[int64][]*ConnWriter),
+		UserConnections: make(map[int64][]*wstypes.ConnWriter),
 		ChatUsers:       make(map[int64]map[int64]int),
 		mu:              &sync.RWMutex{},
+		WSMethods:       make(map[string]wstypes.Method),
 		logger:          logger,
 	}
 }
 
-func (ws *WebSocketManager) WithMethods() {
-	ws.WSMethods = map[string]WSMethod{
-		"send":   WSMethod(ws.SendMessage),
-		"join":   WSMethod(ws.JoinToChat),
-		"create": WSMethod(ws.CreateChat),
-		// "leave": methods.MessengerMethod(LeaveChat),
+func (ws *WebSocketManager) addWSMethod(name string, method wstypes.Method) {
+	ws.WSMethods[name] = method
+}
+
+func (ws *WebSocketManager) useMiddleware(mw func(wstypes.Method) wstypes.Method) {
+	for name, method := range ws.WSMethods {
+		ws.WSMethods[name] = mw(method)
 	}
+}
+
+func (ws *WebSocketManager) WithMethods() {
+	ws.addWSMethod("send", ws.SendMessage)
+	ws.addWSMethod("join", ws.JoinToChat)
+	ws.addWSMethod("create", ws.CreateChat)
+
+	ws.useMiddleware(wsmw.Logging(ws.logger))
 }
 
 func (ws *WebSocketManager) UpgradeConnectionForUser(w http.ResponseWriter, r *http.Request, responseHeader http.Header, payload *dto.UserPayload) error {
@@ -80,17 +80,20 @@ func (ws *WebSocketManager) UpgradeConnectionForUser(w http.ResponseWriter, r *h
 		ws.logger.Error(op, "err", err)
 		return err
 	}
-	cw := NewConnWriter(conn)
+	cw := wstypes.NewConnWriter(conn)
 	defer cw.Close()
 
 	ws.connectUser(r.Context(), cw, payload)
 	defer ws.disconnectUser(context.TODO(), cw, payload)
 
-	ws.Send(cw, payload)
+	if err := wstypes.Send(cw, payload); err != nil {
+		ws.logger.Error(op, "err", err)
+		return err
+	}
 
-	metadata := Metadata{
-		ctx:    r.Context(),
-		userID: payload.ID,
+	metadata := wstypes.Metadata{
+		Ctx:    r.Context(),
+		UserID: payload.ID,
 	}
 
 	for {
@@ -102,7 +105,7 @@ func (ws *WebSocketManager) UpgradeConnectionForUser(w http.ResponseWriter, r *h
 
 		ws.logger.Info("ws request:", "request", string(wsRequest))
 
-		var req WebSocketRequest
+		var req wstypes.Request
 		if err = json.Unmarshal(wsRequest, &req); err != nil {
 			ws.logger.Info(op, fmt.Sprintf("invalid request from user %d:", payload.ID), err)
 			continue
@@ -125,7 +128,7 @@ func (ws *WebSocketManager) UpgradeConnectionForUser(w http.ResponseWriter, r *h
 */
 
 // connect user: add chats and connections
-func (ws *WebSocketManager) connectUser(ctx context.Context, cw *ConnWriter, payload *dto.UserPayload) {
+func (ws *WebSocketManager) connectUser(ctx context.Context, cw *wstypes.ConnWriter, payload *dto.UserPayload) {
 	ws.mu.Lock()
 	defer ws.mu.Unlock()
 
@@ -146,7 +149,7 @@ func (ws *WebSocketManager) connectUser(ctx context.Context, cw *ConnWriter, pay
 }
 
 // disconnect user: remove chats and connections
-func (ws *WebSocketManager) disconnectUser(ctx context.Context, cw *ConnWriter, payload *dto.UserPayload) {
+func (ws *WebSocketManager) disconnectUser(ctx context.Context, cw *wstypes.ConnWriter, payload *dto.UserPayload) {
 	ws.mu.Lock()
 	defer ws.mu.Unlock()
 

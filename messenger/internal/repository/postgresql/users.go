@@ -49,12 +49,13 @@ func (r *UsersRepository) Create(ctx context.Context, user *domain.User) error {
 
 func (r *UsersRepository) User(ctx context.Context, name string) (*domain.User, error) {
 	const op = "repository: postgres: User:"
-
 	var user domain.User
+
 	err := r.db.QueryRowContext(ctx,
 		`SELECT user_id, user_name, password, created_at FROM users WHERE user_name = $1`,
 		name,
 	).Scan(&user.ID, &user.Name, &user.Password, &user.CreatedAt)
+
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("%s %w", op, domain.ErrUserNotFound)

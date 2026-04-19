@@ -1,10 +1,11 @@
-package api
+package httpapi
 
 import (
 	"log/slog"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/tousart/messenger/internal/middleware"
+	"github.com/tousart/messenger/internal/metrics"
+	"github.com/tousart/messenger/internal/middleware/httpmw"
 )
 
 type API struct {
@@ -31,8 +32,12 @@ func NewAPI(wsUpgrader WebSocketUpgrader, msgsUC MessagesUsecase, usersUC UsersU
 }
 
 func (ap *API) WithHandlers(r *chi.Mux) {
-	r.Use(middleware.CorsMiddleware)
-	r.Use(middleware.LoggingMiddleware(ap.logger))
+	r.Use(httpmw.Cors)
+	r.Use(httpmw.Logging(ap.logger))
+	r.Use(httpmw.InstrumentHandler)
+
+	r.Get("/ping", ap.pingPongHandler)
+	r.Handle("/metrics", metrics.Handler())
 
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/register", ap.registerHandler)
@@ -40,7 +45,7 @@ func (ap *API) WithHandlers(r *chi.Mux) {
 	})
 
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.Authorization(ap.usersUC))
+		r.Use(httpmw.Authorization(ap.usersUC))
 		r.Get("/messenger", ap.messengerWebSocketConnectionHandler)
 	})
 }
